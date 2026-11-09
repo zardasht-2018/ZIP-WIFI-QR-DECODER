@@ -1,0 +1,24 @@
+{
+  "name": "ZIP WiFi QR Decoder",
+  "short_name": "ZIP WiFi QR",
+  "description": "SCAN. REVEAL. CONNECT. 100% local in-browser Wi-Fi QR decoder and password extractor.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050811",
+  "theme_color": "#050811",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
