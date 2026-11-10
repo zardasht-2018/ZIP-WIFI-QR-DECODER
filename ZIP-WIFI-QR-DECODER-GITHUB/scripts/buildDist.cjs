@@ -1,5 +1,5 @@
 /**
- * ZIP WiFi QR Decoder — Self-Contained Production Distribution Builder
+ * ZIP QR — Wi-Fi QR Decoder — Self-Contained Production Distribution Builder
  *
  * Generates the production `dist/` directory (`dist/index.html`, `dist/assets/index.css`,
  * `dist/assets/index.js`, `dist/manifest.json`, `dist/sw.js`, `dist/_redirects`,
@@ -56,18 +56,18 @@ if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || wi
 fs.writeFileSync(path.join(assetsDir, 'index.css'), cssContent, 'utf8');
 fs.writeFileSync(path.join(assetsDir, 'index.js'), jsContent, 'utf8');
 
-// 4. Write root-relative dist/index.html
+// 4. Write root-relative dist/index.html with Kurdish Sorani (ckb, RTL) default and ZIP QR branding
 const prodIndexHtml = `<!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="ckb" dir="rtl" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
   <meta name="theme-color" content="#050811" />
-  <meta name="description" content="ZIP WiFi QR Decoder — SCAN. REVEAL. CONNECT. Extract Wi-Fi passwords, SSIDs, and security settings locally in your browser." />
+  <meta name="description" content="ZIP QR — Wi-Fi QR Decoder (SCAN. REVEAL. CONNECT.) Created and developed by Zardasht Muhammad." />
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" type="image/svg+xml" href="/logo/zip-logo.svg" />
   <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
-  <title>ZIP WiFi QR Decoder — SCAN. REVEAL. CONNECT.</title>
+  <title>ZIP QR — Wi-Fi QR Decoder</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -75,7 +75,7 @@ const prodIndexHtml = `<!DOCTYPE html>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/index.css" />
 </head>
-<body data-theme="electric-blue" class="min-h-screen flex flex-col selection:bg-sky-500 selection:text-white">
+<body data-theme="electric-blue" dir="rtl" class="min-h-screen flex flex-col selection:bg-sky-500 selection:text-white">
 ${bodyHtml.trim()}
   <script src="/assets/index.js"></script>
 </body>

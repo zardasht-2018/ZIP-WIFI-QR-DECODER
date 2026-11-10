@@ -1,5 +1,5 @@
 /**
- * ZIP WiFi QR Decoder — Clipboard & Safe Export Utilities
+ * ZIP QR — Wi-Fi QR Decoder — Clipboard & Safe Export Utilities
  */
 
 import { ParsedQRResult } from '../types';
@@ -44,7 +44,7 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
 export function formatResultReport(result: ParsedQRResult): string {
   const lines: string[] = [
     '==================================================',
-    'ZIP WiFi QR Decoder — Decoded Credential Report',
+    'ZIP QR — Wi-Fi QR Decoder — Decoded Credential Report',
     'SCAN. REVEAL. CONNECT.',
     '==================================================',
     `Scan Timestamp     : ${new Date(result.timestamp).toLocaleString()}`,
@@ -88,7 +88,6 @@ export function formatResultReport(result: ParsedQRResult): string {
  */
 export function downloadDecodedResult(result: ParsedQRResult, format: 'txt' | 'json' = 'txt'): void {
   const dateStamp = new Date(result.timestamp).toISOString().slice(0, 19).replace(/[:T]/g, '-');
-  // Safe neutral filename that never leaks SSID or password in filesystem metadata
   const safeFilename = `zip-qr-decoded-report-${dateStamp}.${format}`;
 
   const content =

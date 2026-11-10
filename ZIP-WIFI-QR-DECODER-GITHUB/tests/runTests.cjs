@@ -1,25 +1,25 @@
 /**
- * ZIP WiFi QR Decoder — Independent Automated Test Suite
+ * ZIP QR — Wi-Fi QR Decoder — Independent Automated QA Test Suite
  *
- * Uses pre-compiled modules in `src/compiled/` (or Babel on-the-fly when available)
- * and pure Node QRCode / Python OpenCV matrix generation so tests run cleanly on any machine.
- *
- * Tests:
+ * Verifies:
  * 1. Valid WPA QR codes
- * 2. Valid WPA2 QR codes
+ * 2. Valid WPA2 & WPA3-SAE QR codes
  * 3. WEP QR codes
  * 4. Open network QR codes (nopass)
  * 5. Hidden networks
  * 6. Passwords containing special characters (\; \, \: \\ \")
  * 7. SSIDs containing special characters
  * 8. Missing passwords ("No password is encoded in this QR code.")
- * 9. Invalid / malformed QR payloads
- * 10. Ordinary website QR codes
+ * 9. Invalid / plain text QR payloads
+ * 10. Ordinary website URL QR codes
  * 11. Empty QR payloads
  * 12. DPP QR recognition (Wi-Fi Easy Connect without fake plaintext password)
  * 13. Ephemeral image upload decoding (on-the-fly generated PNG, JPG, and WEBP QR images)
  * 14. History management (opt-in/out, add, delete single, clear all)
- * 15. Copy-to-clipboard & safe export report formatting
+ * 15. Copy-to-clipboard & safe export report formatting (ZIP QR — Wi-Fi QR Decoder)
+ * 16. Kurdish Sorani (ckb) default language, English (en) parity, and language persistence
+ * 17. Developer/Creator identity (Zardasht Muhammad, mailto:zardashtmuhammad12@gmail.com)
+ * 18. PWA manifest & index.html branding (ZIP QR — Wi-Fi QR Decoder, short_name: ZIP QR)
  */
 
 const assert = require('assert');
@@ -51,6 +51,7 @@ const wifiParser = loadModule('src/services/wifiParser.ts', 'wifiParser.cjs');
 const qrDecoder = loadModule('src/services/qrDecoder.ts', 'qrDecoder.cjs');
 const storageMod = loadModule('src/services/storageService.ts', 'storageService.cjs');
 const clipMod = loadModule('src/utils/clipboardAndExport.ts', 'clipboardAndExport.cjs');
+const i18nMod = loadModule('src/i18n/translations.ts', 'translations.cjs');
 
 let passed = 0;
 let failed = 0;
@@ -68,7 +69,7 @@ function runTest(id, title, fn) {
 }
 
 console.log('==============================================================');
-console.log('ZIP WiFi QR Decoder — Independent Automated QA Test Runner');
+console.log('ZIP QR — Wi-Fi QR Decoder — Automated QA & Localization Runner');
 console.log('==============================================================');
 
 // 1. Valid WPA QR codes
@@ -285,6 +286,7 @@ runTest(15, 'Clipboard fallback and formatted credential report preserve all dec
     'WIFI:T:WPA2;S:Test_Verify_Net;P:Verify#Pass!2026;H:true;;'
   );
   const report = clipMod.formatResultReport(sample);
+  assert.ok(report.includes('ZIP QR — Wi-Fi QR Decoder'));
   assert.ok(report.includes('Test_Verify_Net'));
   assert.ok(report.includes('Verify#Pass!2026'));
   assert.ok(report.includes('WPA2-Personal (PSK)'));
@@ -301,6 +303,51 @@ runTest(15, 'Clipboard fallback and formatted credential report preserve all dec
   const copiedOk = await clipMod.copyTextToClipboard(sample.password);
   assert.strictEqual(copiedOk, true);
   assert.strictEqual(clipboardBuffer, 'Verify#Pass!2026');
+});
+
+// 16. Kurdish Sorani (ckb) Default Language, English (en) Parity, and Persistence
+runTest(16, 'Kurdish Sorani (ckb) is default language with complete translation parity and persistence', () => {
+  assert.strictEqual(i18nMod.DEFAULT_LANGUAGE, 'ckb');
+  const ckbKeys = Object.keys(i18nMod.TRANSLATIONS.ckb);
+  const enKeys = Object.keys(i18nMod.TRANSLATIONS.en);
+  assert.deepStrictEqual(ckbKeys, enKeys);
+
+  const svc = storageMod.storageService;
+  svc.saveSettings({ language: 'ckb' });
+  assert.strictEqual(svc.getSettings().language, 'ckb');
+  svc.saveSettings({ language: 'en' });
+  assert.strictEqual(svc.getSettings().language, 'en');
+  svc.saveSettings({ language: 'ckb' });
+  assert.strictEqual(svc.getSettings().language, 'ckb');
+});
+
+// 17. Developer / Creator Identity Verification (Zardasht Muhammad & mailto link)
+runTest(17, 'Creator identity credits Zardasht Muhammad in Kurdish & English with valid mailto link', () => {
+  assert.strictEqual(
+    i18nMod.TRANSLATIONS.en.creatorCreditLine,
+    'Created and developed by Zardasht Muhammad.'
+  );
+  assert.strictEqual(
+    i18nMod.TRANSLATIONS.ckb.creatorCreditLine,
+    'دروستکراو و پەرەپێدراوە لەلایەن زەردەشت محمد.'
+  );
+  const bodyHtml = fs.readFileSync(path.join(projectRoot, 'src/templates/body.html'), 'utf8');
+  assert.ok(bodyHtml.includes('href="mailto:zardashtmuhammad12@gmail.com"'));
+  assert.ok(bodyHtml.includes('Zardasht Muhammad'));
+});
+
+// 18. PWA Manifest & Page Title Branding Verification
+runTest(18, 'PWA manifest.json and index.html use shortened ZIP QR — Wi-Fi QR Decoder branding', () => {
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(projectRoot, 'public/manifest.json'), 'utf8')
+  );
+  assert.strictEqual(manifest.name, 'ZIP QR — Wi-Fi QR Decoder');
+  assert.strictEqual(manifest.short_name, 'ZIP QR');
+
+  const indexHtml = fs.readFileSync(path.join(projectRoot, 'index.html'), 'utf8');
+  assert.ok(indexHtml.includes('<title>ZIP QR — Wi-Fi QR Decoder</title>'));
+  assert.ok(indexHtml.includes('lang="ckb"'));
+  assert.ok(indexHtml.includes('dir="rtl"'));
 });
 
 setTimeout(() => {

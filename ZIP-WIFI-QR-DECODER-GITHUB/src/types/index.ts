@@ -1,6 +1,8 @@
 /**
- * ZIP WiFi QR Decoder — Type Definitions
+ * ZIP QR — Wi-Fi QR Decoder — Type Definitions
  */
+
+import { SupportedLanguage } from '../i18n/translations';
 
 export type SecurityProtocol =
   | 'WPA'
@@ -66,6 +68,7 @@ export interface ScanHistoryEntry {
 }
 
 export interface AppSettings {
+  language: SupportedLanguage;
   historyEnabled: boolean;
   autoMaskPassword: boolean;
   accentTheme: 'electric-blue' | 'cyber-purple' | 'emerald-shield';

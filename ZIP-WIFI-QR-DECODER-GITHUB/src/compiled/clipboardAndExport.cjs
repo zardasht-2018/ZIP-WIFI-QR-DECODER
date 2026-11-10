@@ -7,7 +7,7 @@ exports.copyTextToClipboard = copyTextToClipboard;
 exports.downloadDecodedResult = downloadDecodedResult;
 exports.formatResultReport = formatResultReport;
 /**
- * ZIP WiFi QR Decoder — Clipboard & Safe Export Utilities
+ * ZIP QR — Wi-Fi QR Decoder — Clipboard & Safe Export Utilities
  */
 
 /**
@@ -46,7 +46,7 @@ async function copyTextToClipboard(text) {
  * Formats all decoded information from a `ParsedQRResult` into a structured human-readable report
  */
 function formatResultReport(result) {
-  const lines = ['==================================================', 'ZIP WiFi QR Decoder — Decoded Credential Report', 'SCAN. REVEAL. CONNECT.', '==================================================', `Scan Timestamp     : ${new Date(result.timestamp).toLocaleString()}`, `Payload Format     : ${result.formatLabel}`, `Payload Category   : ${result.category}`, '--------------------------------------------------', 'NETWORK INFORMATION', '--------------------------------------------------', `1. Wi-Fi Name (SSID)      : ${result.ssid}`, `2. Wi-Fi Password         : ${result.hasPasswordField && result.password !== null ? result.password : result.passwordStatusMessage}`, `3. Security Type          : ${result.securityDisplay}`, `4. Hidden Network Status  : ${result.hiddenDisplay}`, `5. QR Payload Format      : ${result.formatLabel}`];
+  const lines = ['==================================================', 'ZIP QR — Wi-Fi QR Decoder — Decoded Credential Report', 'SCAN. REVEAL. CONNECT.', '==================================================', `Scan Timestamp     : ${new Date(result.timestamp).toLocaleString()}`, `Payload Format     : ${result.formatLabel}`, `Payload Category   : ${result.category}`, '--------------------------------------------------', 'NETWORK INFORMATION', '--------------------------------------------------', `1. Wi-Fi Name (SSID)      : ${result.ssid}`, `2. Wi-Fi Password         : ${result.hasPasswordField && result.password !== null ? result.password : result.passwordStatusMessage}`, `3. Security Type          : ${result.securityDisplay}`, `4. Hidden Network Status  : ${result.hiddenDisplay}`, `5. QR Payload Format      : ${result.formatLabel}`];
   if (result.extraFields.length > 0) {
     lines.push('--------------------------------------------------');
     lines.push('6. ADDITIONAL ENCODED PARAMETERS');
@@ -69,7 +69,6 @@ function formatResultReport(result) {
  */
 function downloadDecodedResult(result, format = 'txt') {
   const dateStamp = new Date(result.timestamp).toISOString().slice(0, 19).replace(/[:T]/g, '-');
-  // Safe neutral filename that never leaks SSID or password in filesystem metadata
   const safeFilename = `zip-qr-decoded-report-${dateStamp}.${format}`;
   const content = format === 'json' ? JSON.stringify(result, null, 2) : formatResultReport(result);
   const mimeType = format === 'json' ? 'application/json;charset=utf-8' : 'text/plain;charset=utf-8';

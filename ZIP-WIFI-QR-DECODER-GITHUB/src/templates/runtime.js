@@ -1358,15 +1358,329 @@ function decodeQRFromFile(file) {
   });
 }
 
+// =========================================================================
+    // BILINGUAL LOCALIZATION DICTIONARY (Kurdish Sorani ckb RTL & English en LTR)
+    // =========================================================================
+    const TRANSLATIONS = {
+  "ckb": {
+    "brandPrimary": "ZIP QR",
+    "brandSecondary": "Wi-Fi QR Decoder",
+    "brandDisplayTitle": "ZIP QR — Wi-Fi QR Decoder",
+    "tagline": "SCAN. REVEAL. CONNECT.",
+    "navHome": "سەرەکی",
+    "navScanner": "سکانەر",
+    "navResults": "ئەنجامەکان",
+    "navHistory": "مێژوو",
+    "navSettings": "ڕێکخستنەکان",
+    "langKurdish": "کوردی",
+    "langEnglish": "English",
+    "heroBadge": "١٠٠٪ شیکردنەوەی ناوخۆیی لەناو وێبگەڕ • بێ ناردن بۆ سێرڤەر",
+    "heroDescription": "هەر کۆدێکی QRـی وای-فای بە کامێرا سکان بکە یان وێنەی QR باربکە (PNG، JPG، JPEG، WEBP) بۆ دەرهێنان و پیشاندانی دەستبەجێی تێپەڕەوشەی وای-فای، ناوی تۆڕ (SSID)، جۆری پاراستن (WPA، WPA2، WPA3، WEP، کراوە، DPP)، و دۆخی تۆڕی شاراوە.",
+    "btnScanQrCode": "سکانکردنی کۆدی QR",
+    "btnUploadQrImage": "بارکردنی وێنەی QR",
+    "card1Step": "١. کامێرای ڕاستەوخۆ",
+    "card1Title": "سکانکردنی کۆدی QR",
+    "card1Desc": "کامێرای ئامێرەکەت بکەرەوە بۆ ناسینەوە و خوێندنەوەی خودکارانەی کۆدی QRـی وای-فای بە شێوەی ڕاستەوخۆ.",
+    "card1Btn": "کردنەوەی سکانەری کامێرا",
+    "card2Step": "٢. هەڵبژاردنی وێنە و ڕاکێشان",
+    "card2Title": "بارکردنی وێنەی QR",
+    "card2Desc": "فایلی وێنەی کۆدی QR (PNG، JPG، JPEG، یان WEBP) لە گەلەری مۆبایل یان کۆمپیوتەرەکەت هەڵبژێرە یان ڕایبکێشە بۆ ئێرە.",
+    "card2Btn": "هەڵبژاردنی وێنەی QR",
+    "card3Step": "٣. دەقی ڕاستەوخۆی کۆد",
+    "card3Title": "لکاندنی ناوەڕۆکی QR",
+    "card3Desc": "دەقی ناوەڕۆکی کۆدی QRـی وای-فای (WIFI:...;; یان DPP:...;;) لێرە بلکێنە بۆ دەرهێنانی زانیارییەکانی بە دەستبەجێ.",
+    "card3Placeholder": "دەقی WIFI:... یان DPP:... لێرە بلکێنە",
+    "card3Btn": "شیکردنەوەی ناوەڕۆکی QR",
+    "recentHeading": "کۆدە سکانکراوەکانی دوایی",
+    "recentSubheading": "کۆدە پاشەکەوتکراوەکان بە شێوەی ناوخۆیی لەسەر ئەم ئامێرە",
+    "btnManageHistory": "بەڕێوەبردنی مێژوو",
+    "emptyRecentText": "هێشتا هیچ کۆدێکی QR سکان نەکراوە. لە سەرەوە سکانکردنی کۆدی QR، بارکردنی وێنەی QR، یان لکاندنی ناوەڕۆکی QR بەکاربهێنە.",
+    "scannerTitle": "سکانەری ڕاستەوخۆی QRـی وای-فای",
+    "scannerSubtitle": "کۆدی QRـی وای-فای بخەرە ناو چوارچێوەکە یان وێنەیەک لە گەلەری ئامێرەکەت هەڵبژێرە.",
+    "btnCancel": "پاشگەزبوونەوە",
+    "scannerRequestingCamera": "داواکردنی مۆڵەتی کامێرا...",
+    "scannerOpeningStream": "کردنەوەی پەخشی کامێرا...",
+    "scannerAlignPrompt": "کۆدی QRـی وای-فای بخەرە ناو چوارچێوەی سکانکردن...",
+    "scannerFallbackTitle": "کامێرا بەردەست نییە — بارکردنی وێنە چالاکە",
+    "scannerFallbackNoApi": "تایبەتمەندی کامێرا (getUserMedia) لەم وێبگەڕەدا بەردەست نییە. دەتوانیت ڕاستەوخۆ هەر وێنەیەکی PNG، JPG، یان WEBP باربکەیت.",
+    "scannerFallbackDenied": "مۆڵەتی کامێرا ڕەتکرایەوە یان هیچ کامێرایەک لەسەر ئەم ئامێرە نەدۆزرایەوە. دوگمەی بارکردنی وێنەی QR لە خوارەوە بەکاربهێنە.",
+    "btnRetryCamera": "هەوڵدانەوەی کامێرا",
+    "btnFallbackUpload": "بارکردنی وێنەی QR لەبری کامێرا",
+    "defaultCameraLabel": "کامێرای بنەڕەتی ئامێر",
+    "cameraItemPrefix": "کامێرا",
+    "flashlightOn": "فلاش: داگیرساوە",
+    "flashlightOff": "فلاش: کوژاوەتەوە",
+    "flashlightNA": "فلاش بەردەست نییە",
+    "btnUploadFromGallery": "بارکردن لە گەلەرییەوە",
+    "resultsEmptyTitle": "هێشتا هیچ کۆدێکی QR سکان نەکراوە",
+    "resultsEmptyDesc": "لە پەڕەی سەرەکی کۆدێکی QRـی وای-فای بە کامێرا سکان بکە، وێنەیەک باربکە، یان دەقی کۆدەکە بلکێنە.",
+    "btnScanAnother": "سکانکردنی کۆدێکی تر",
+    "btnCopySsid": "لەبەرگرتنەوەی ناوی تۆڕ (SSID)",
+    "sourcePrefix": "سەرچاوە:",
+    "decodedOnPrefix": "شیکراوەتەوە لە ڕێکەوتی",
+    "extractedPasswordHeading": "تێپەڕەوشەی دەرهێنراوی وای-فای",
+    "charsSuffix": "پیت/هێما",
+    "btnShowPassword": "پیشاندانی تێپەڕەوشە",
+    "btnHidePassword": "شاردنەوەی تێپەڕەوشە",
+    "btnCopyPassword": "لەبەرگرتنەوەی تێپەڕەوشە",
+    "passwordExactNote": "ڕاستەوخۆ و بە شێوەی ناوخۆیی لە ناوەڕۆکی کۆدی QR دەرهێنراوە لەگەڵ چارەسەرکردنی تەواوی هێما تایبەتەکان.",
+    "noPasswordEncodedMsg": "هیچ تێپەڕەوشەیەک لەم کۆدی QRـەدا تۆمار نەکراوە.",
+    "openNetworkNoPasswordMsg": "تۆڕی کراوە — پێویستی بە تێپەڕەوشە نییە.",
+    "dppNoPasswordMsg": "هیچ تێپەڕەوشەیەک لەم کۆدی QRـەدا تۆمار نەکراوە. پڕۆتۆکۆلی DPP کلیلی گشتی نهێنیبەندی بەکاردەهێنێت لەبری تێپەڕەوشەی ئاسایی.",
+    "networkInfoHeading": "زانیارییەکانی تۆڕ",
+    "infoLabel1Ssid": "١. ناوی تۆڕی وای-فای (SSID)",
+    "infoLabel2Password": "٢. تێپەڕەوشەی وای-فای",
+    "infoLabel3Security": "٣. جۆری پاراستن (Security Type)",
+    "infoLabel4Hidden": "٤. دۆخی تۆڕی شاراوە",
+    "infoLabel5Format": "٥. جۆری فۆرماتی کۆدی QR",
+    "infoLabel6Extra": "٦. زانیارییە زیادە تۆمارکراوەکانی ناو کۆدی QR",
+    "infoNoExtraParams": "هیچ پارامێتەرێکی زیادە لەم کۆدی QRـەدا بوونی نییە.",
+    "infoRawPayloadLabel": "دەقی ڕەسەنی ناوەڕۆکی کۆدی QR",
+    "btnCopyAllInfo": "لەبەرگرتنەوەی هەموو زانیارییەکان",
+    "btnDownloadTxt": "داگرتنی ئەنجامەکان (.TXT)",
+    "btnDownloadJson": "داگرتنی ئەنجامەکان (.JSON)",
+    "pasteAnotherHeading": "پشکنەری دەقی ناوەڕۆکی کۆدی QR",
+    "pasteAnotherDesc": "هەر دەقێکی WIFI:T:...;S:...;P:...;; یان DPP:...;; لێرە بلکێنە بۆ شیکردنەوەی ڕاستەوخۆ:",
+    "btnDecodePayload": "شیکردنەوەی دەق",
+    "hiddenYes": "بەڵێ",
+    "hiddenNo": "نەخێر",
+    "hiddenNA": "بەردەست نییە",
+    "historyTitle": "مێژووی سکانکردن",
+    "historySubtitle": "بینینی کۆدە سکانکراوەکانی پێشوو. بە تەواوی لەناو ئامێرەکەی خۆت پاشەکەوت دەکرێت.",
+    "labelSaveHistory": "پاشەکەوتکردنی مێژووی سکان",
+    "btnClearAllHistory": "سڕینەوەی هەموو مێژوو",
+    "modalClearTitle": "دڵنیابوونەوە لە سڕینەوەی تەواوی مێژوو",
+    "modalClearDesc": "ئایا دڵنیایت کە دەتەوێت هەموو تۆمارەکانی مێژووی سکان بە هەمیشەیی لە وێبگەڕەکەت بسڕیتەوە؟",
+    "btnConfirmClear": "بەڵێ، هەمووی بسڕەوە",
+    "historySearchPlaceholder": "گەڕان لە مێژوودا بەپێی ناوی تۆڕ (SSID)، جۆری پاراستن، یان فۆرمات...",
+    "historyEmptyText": "مێژووی ناوخۆیی سکانکردن لە ئێستادا بەتاڵە.",
+    "historyNoMatchText": "هیچ تۆمارێکی مێژوو لەگەڵ گەڕانەکەت ناگونجێت.",
+    "btnOpenResult": "کردنەوەی ئەنجام",
+    "btnDeleteEntry": "سڕینەوە",
+    "badgeHiddenSsid": "تۆڕی شاراوە",
+    "historyPasswordExtractedPrefix": "تێپەڕەوشە دەرهێنراوە",
+    "settingsTitle": "ڕێکخستنەکان و تایبەتمەندی",
+    "settingsSubtitle": "گۆڕینی زمان، ڕووکاری ڕەنگەکان، شاردنەوەی تێپەڕەوشە، و کۆنترۆڵکردنی تایبەتمەندی داتای ناوخۆیی.",
+    "settingsLanguageHeading": "زمان / Language",
+    "settingsLanguageDesc": "زمانی پیشاندانی بەرنامەکە هەڵبژێرە (بە شێوەی خودکارانە پاشەکەوت دەکرێت).",
+    "settingsThemeHeading": "ڕێکخستنی ڕووکار (Theme)",
+    "theme1Title": "شینی کارەبایی و مۆر",
+    "theme1Desc": "ڕووکاری تاریکی بنەڕەتی ZIP QR",
+    "theme2Title": "ڕووکاری وەنەوشەیی سایبەر",
+    "theme2Desc": "ڕەنگی تاریکی قووڵ لەگەڵ درەوشانەوەی وەنەوشەیی",
+    "theme3Title": "قەڵغانی زومڕەدی",
+    "theme3Desc": "ڕووکاری تاریکی جیاوازی بەرز",
+    "maskPasswordTitle": "شاردنەوەی تێپەڕەوشە بە شێوەی بنەڕەتی لە پەڕەی ئەنجامەکان",
+    "maskPasswordDesc": "سەرەتا تێپەڕەوشەکە بە شاراوەیی (••••••) پیشان بدە تا ئەو کاتەی کرتە لە پیشاندانی تێپەڕەوشە دەکەیت",
+    "historyPrefsHeading": "ڕێکخستنەکانی مێژوو",
+    "enableHistoryTitle": "چالاککردنی مێژووی سکانی ناوخۆیی",
+    "enableHistoryDesc": "پاشەکەوتکردنی خودکارانەی کۆدە شیکراوەکانی QR لە بیرگەی ناوخۆیی وێبگەڕەکەت",
+    "privacyHeading": "زانیاری تایبەتمەندی و کۆنترۆڵی داتا",
+    "privacyCard1Title": "١٠٠٪ کارکردن لەسەر ئامێری بەکارهێنەر",
+    "privacyCard1Desc": "پەخشی کامێرا و وێنە بارکراوەکانی QR بە تەواوی لەناو وێبگەڕەکەت شیدەکرێنەوە. تێپەڕەوشەکان هەرگیز بۆ هیچ سێرڤەر یان خزمەتگوزارییەکی دەرەکی نانێردرێن.",
+    "privacyCard2Title": "پاراستنی داتای دەرەکی و داگرتنی سەلامەت",
+    "privacyCard2Desc": "بەستەرە سکانکراوەکان بە شێوەی خودکارانە ناکرێنەوە، و فایلە داگیراوەکان ناوی بێلایەنی کاتدار بەکاردەهێنن بۆ ئەوەی زانیارییە نهێنییەکان لە ناوی فایلدا دەرنەکەون.",
+    "btnClearAllStoredData": "سڕینەوەی هەموو داتا پاشەکەوتکراوەکان (مێژوو و ڕێکخستنەکان)",
+    "confirmWipePrompt": "دڵنیایت لە سڕینەوەی هەموو مێژوو و گەڕاندنەوەی ڕێکخستنەکان بۆ دۆخی بنەڕەتی؟",
+    "btnConfirmWipe": "تەواو، هەمووی بسڕەوە",
+    "aboutHeading": "دەربارەی ZIP QR — Wi-Fi QR Decoder",
+    "aboutDescription": "ZIP QR — Wi-Fi QR Decoder (وەشانی PWA) — SCAN. REVEAL. CONNECT. دیزاین کراوە بۆ ئایفۆن، ئایپاد، مۆبایل و تابلێتەکانی ئەندرۆید، ویندۆز، ماکبووک، و کۆمپیوتەرەکانی لینوکس. پشتگیری لە تۆڕەکانی WPA، WPA2، WPA3-SAE، WPA2-EAP، WEP، تۆڕە کراوەکان (nopass)، تۆڕە شاراوەکان، هێما تایبەتەکان (\\; \\, \\: \\\\ \\\")، و کۆدەکانی Wi-Fi Easy Connect (DPP:) دەکات.",
+    "creatorSectionBadge": "زانیاری گەشەپێدەر و دروستکەر",
+    "creatorNameLabel": "ناو",
+    "creatorNameValue": "زەردەشت محمد (Zardasht Muhammad)",
+    "creatorTitleLabel": "ناونیشانی پیشەیی",
+    "creatorTitleValue": "گەشەپێدەر و دروستکەر (Developer & Creator)",
+    "creatorProjectLabel": "پڕۆژە",
+    "creatorProjectValue": "ZIP QR — Wi-Fi QR Decoder",
+    "creatorCreditLine": "دروستکراو و پەرەپێدراوە لەلایەن زەردەشت محمد.",
+    "creatorContactBtn": "پەیوەندیکردن بە ئیمەیڵ",
+    "creatorEmailLabel": "ئیمەیڵی پەیوەندی",
+    "footerLeft": "ZIP QR — Wi-Fi QR Decoder • SCAN. REVEAL. CONNECT.",
+    "footerRight": "١٠٠٪ شیکردنەوەی ناوخۆیی کۆدی QR لەناو وێبگەڕ • بێ ناردن بۆ هەور (Cloud)",
+    "toastPasswordExtracted": "تێپەڕەوشە دەرهێنرا بۆ تۆڕی",
+    "toastDecodedPayload": "کۆدی QR بە سەرکەوتوویی شیکرایەوە",
+    "toastPasswordCopied": "تێپەڕەوشەی وای-فای لەبەرگیرایەوە!",
+    "toastSsidCopied": "ناوی تۆڕ (SSID) لەبەرگیرایەوە!",
+    "toastAllCopied": "هەموو زانیارییەکانی تۆڕ لەبەرگیرانەوە!",
+    "toastDownloadedTxt": "ڕاپۆرتی ئەنجامەکان داگیرا (.txt)",
+    "toastDownloadedJson": "فایلی داتای ئەنجامەکان داگیرا (.json)",
+    "toastEnterPayload": "تکایە دەقی ناوەڕۆکی کۆدی QR بنووسە یان بلکێنە بۆ شیکردنەوە.",
+    "toastHistoryEnabled": "پاشەکەوتکردنی مێژووی سکان چالاک کرا.",
+    "toastHistoryPaused": "پاشەکەوتکردنی مێژووی سکان ڕاگیرا.",
+    "toastHistoryCleared": "تەواوی مێژووی سکان سڕایەوە.",
+    "toastEntryDeleted": "تۆمارەکە لە مێژووی سکان سڕایەوە.",
+    "toastThemeUpdated": "ڕووکاری بەرنامە نوێکرایەوە.",
+    "toastDataWiped": "هەموو داتا و ڕێکخستنە ناوخۆییەکان سڕانەوە.",
+    "toastLanguageChanged": "زمان گۆڕدرا بۆ کوردی سۆرانی.",
+    "toastDecodeError": "هیچ کۆدێکی دروستی QR لەم وێنەیەدا نەدۆزرایەوە.",
+    "toastTorchUnsupported": "کۆنترۆڵکردنی فلاش لەسەر ئەم کامێرایە پشتگیری ناکرێت."
+  },
+  "en": {
+    "brandPrimary": "ZIP QR",
+    "brandSecondary": "Wi-Fi QR Decoder",
+    "brandDisplayTitle": "ZIP QR — Wi-Fi QR Decoder",
+    "tagline": "SCAN. REVEAL. CONNECT.",
+    "navHome": "Home",
+    "navScanner": "Scanner",
+    "navResults": "Results",
+    "navHistory": "History",
+    "navSettings": "Settings",
+    "langKurdish": "کوردی",
+    "langEnglish": "English",
+    "heroBadge": "100% Local In-Browser Decoding • Zero Server Uploads",
+    "heroDescription": "Scan any Wi-Fi QR code with your camera or upload a QR image (PNG, JPG, JPEG, WEBP) to immediately extract and reveal the exact encoded Wi-Fi Password, SSID, Security Type (WPA, WPA2, WPA3, WEP, Open, DPP), and Hidden Network Status.",
+    "btnScanQrCode": "SCAN QR CODE",
+    "btnUploadQrImage": "UPLOAD QR IMAGE",
+    "card1Step": "1. Live Camera",
+    "card1Title": "SCAN QR CODE",
+    "card1Desc": "Open your device camera to automatically detect and decode a physical Wi-Fi QR code in real time.",
+    "card1Btn": "OPEN CAMERA SCANNER",
+    "card2Step": "2. Image Picker & Dropzone",
+    "card2Title": "UPLOAD QR IMAGE",
+    "card2Desc": "Select or drag and drop a QR image file (PNG, JPG, JPEG, or WEBP) from your gallery or computer.",
+    "card2Btn": "SELECT QR IMAGE",
+    "card3Step": "3. Direct Payload",
+    "card3Title": "PASTE QR CONTENT",
+    "card3Desc": "Paste an actual Wi-Fi QR payload string (WIFI:...;; or DPP:...;;) to extract its credentials immediately.",
+    "card3Placeholder": "Paste WIFI:... or DPP:... payload here",
+    "card3Btn": "DECODE QR CONTENT",
+    "recentHeading": "Recently Scanned Codes",
+    "recentSubheading": "Locally saved QR scans on this device",
+    "btnManageHistory": "Manage History",
+    "emptyRecentText": "No QR codes scanned yet. Use SCAN QR CODE, UPLOAD QR IMAGE, or PASTE QR CONTENT above to decode a QR code.",
+    "scannerTitle": "Live Wi-Fi QR Scanner",
+    "scannerSubtitle": "Align the Wi-Fi QR code inside the frame or select an image from your gallery.",
+    "btnCancel": "Cancel",
+    "scannerRequestingCamera": "Requesting camera access...",
+    "scannerOpeningStream": "Opening camera stream...",
+    "scannerAlignPrompt": "Align Wi-Fi QR code within the scanning frame...",
+    "scannerFallbackTitle": "Camera Unavailable — Image Upload Active",
+    "scannerFallbackNoApi": "Camera API (getUserMedia) is unavailable in this browser context. You can upload any PNG, JPG, or WEBP QR image directly.",
+    "scannerFallbackDenied": "Camera access was denied or no camera hardware was detected. Use the Upload QR Image button below to decode from a file.",
+    "btnRetryCamera": "Retry Camera",
+    "btnFallbackUpload": "Upload QR Image Instead",
+    "defaultCameraLabel": "Default Environment Camera",
+    "cameraItemPrefix": "Camera",
+    "flashlightOn": "Flashlight: ON",
+    "flashlightOff": "Flashlight: OFF",
+    "flashlightNA": "Flashlight N/A",
+    "btnUploadFromGallery": "Upload from Gallery",
+    "resultsEmptyTitle": "No QR Code Scanned Yet",
+    "resultsEmptyDesc": "Scan a Wi-Fi QR code with your camera, upload a QR image, or paste QR content on the Home page.",
+    "btnScanAnother": "SCAN ANOTHER CODE",
+    "btnCopySsid": "Copy SSID",
+    "sourcePrefix": "Source:",
+    "decodedOnPrefix": "Decoded on",
+    "extractedPasswordHeading": "EXTRACTED WI-FI PASSWORD",
+    "charsSuffix": "chars",
+    "btnShowPassword": "SHOW PASSWORD",
+    "btnHidePassword": "HIDE PASSWORD",
+    "btnCopyPassword": "COPY PASSWORD",
+    "passwordExactNote": "Decoded locally directly from the QR code payload with full special-character unescaping.",
+    "noPasswordEncodedMsg": "No password is encoded in this QR code.",
+    "openNetworkNoPasswordMsg": "Open network — no password required.",
+    "dppNoPasswordMsg": "No password is encoded in this QR code. DPP uses cryptographic public-key bootstrapping instead of a plaintext Wi-Fi password.",
+    "networkInfoHeading": "NETWORK INFORMATION",
+    "infoLabel1Ssid": "1. Wi-Fi Name (SSID)",
+    "infoLabel2Password": "2. Wi-Fi Password",
+    "infoLabel3Security": "3. Security Type",
+    "infoLabel4Hidden": "4. Hidden Network Status",
+    "infoLabel5Format": "5. QR Payload Format",
+    "infoLabel6Extra": "6. Additional Information Actually Present in QR Code",
+    "infoNoExtraParams": "No additional optional parameters are encoded in this QR code.",
+    "infoRawPayloadLabel": "Exact Raw QR Payload",
+    "btnCopyAllInfo": "COPY ALL INFORMATION",
+    "btnDownloadTxt": "DOWNLOAD RESULTS (.TXT)",
+    "btnDownloadJson": "DOWNLOAD RESULTS (.JSON)",
+    "pasteAnotherHeading": "Raw QR Payload String Tester",
+    "pasteAnotherDesc": "Paste any raw WIFI:T:...;S:...;P:...;; or DPP:...;; string to decode it directly:",
+    "btnDecodePayload": "Decode Payload",
+    "hiddenYes": "Yes",
+    "hiddenNo": "No",
+    "hiddenNA": "N/A",
+    "historyTitle": "Scan History",
+    "historySubtitle": "View previously scanned QR codes. Stored strictly locally on your device.",
+    "labelSaveHistory": "Save Scan History",
+    "btnClearAllHistory": "Clear All History",
+    "modalClearTitle": "Confirm Clearing All Scan History",
+    "modalClearDesc": "Are you sure you want to permanently delete all saved scan history entries from your browser?",
+    "btnConfirmClear": "Yes, Delete All",
+    "historySearchPlaceholder": "Search history by network name (SSID), security protocol, or format...",
+    "historyEmptyText": "Your local scan history is currently empty.",
+    "historyNoMatchText": "No scan history entries match your search filter.",
+    "btnOpenResult": "Open Result",
+    "btnDeleteEntry": "Delete",
+    "badgeHiddenSsid": "Hidden SSID",
+    "historyPasswordExtractedPrefix": "Password extracted",
+    "settingsTitle": "Settings & Privacy",
+    "settingsSubtitle": "Customize language, theme accents, password masking defaults, and local storage privacy controls.",
+    "settingsLanguageHeading": "Language / زمان",
+    "settingsLanguageDesc": "Select the application interface language (saved automatically).",
+    "settingsThemeHeading": "Theme Settings",
+    "theme1Title": "Electric Blue & Purple",
+    "theme1Desc": "Default ZIP dark neon palette",
+    "theme2Title": "Cyber Violet Core",
+    "theme2Desc": "Deep obsidian with violet accents",
+    "theme3Title": "Emerald Security",
+    "theme3Desc": "High-contrast tactical dark theme",
+    "maskPasswordTitle": "Mask Password by Default on Results Page",
+    "maskPasswordDesc": "Start with password masked (••••••) until you tap SHOW PASSWORD",
+    "historyPrefsHeading": "History Preferences",
+    "enableHistoryTitle": "Enable Local Scan History",
+    "enableHistoryDesc": "Automatically save decoded QR codes in your browser's local storage",
+    "privacyHeading": "Privacy Information & Data Control",
+    "privacyCard1Title": "100% Client-Side Execution",
+    "privacyCard1Desc": "Camera streams and uploaded QR images are decoded entirely inside your browser. Passwords are never transmitted to any external server or analytics service.",
+    "privacyCard2Title": "Untrusted Input & Export Safety",
+    "privacyCard2Desc": "Scanned URLs are never opened automatically, and exported files use neutral timestamped filenames so credentials never leak in file names.",
+    "btnClearAllStoredData": "Clear All Stored Data (History & Preferences)",
+    "confirmWipePrompt": "Confirm wiping all saved history and resetting settings?",
+    "btnConfirmWipe": "Confirm Wipe",
+    "aboutHeading": "About ZIP QR — Wi-Fi QR Decoder",
+    "aboutDescription": "ZIP QR — Wi-Fi QR Decoder (PWA) — SCAN. REVEAL. CONNECT. Designed for iPhones, iPads, Android phones & tablets, Windows, MacBooks, and Linux computers. Supports WPA, WPA2, WPA3-SAE, WPA2-EAP, WEP, Open (nopass), hidden networks, escaped special characters (\\; \\, \\: \\\\ \\\"), and Wi-Fi Easy Connect (DPP:).",
+    "creatorSectionBadge": "Developer & Creator Identity",
+    "creatorNameLabel": "Name",
+    "creatorNameValue": "Zardasht Muhammad",
+    "creatorTitleLabel": "Professional Title",
+    "creatorTitleValue": "Developer & Creator",
+    "creatorProjectLabel": "Project",
+    "creatorProjectValue": "ZIP QR — Wi-Fi QR Decoder",
+    "creatorCreditLine": "Created and developed by Zardasht Muhammad.",
+    "creatorContactBtn": "Contact via Email",
+    "creatorEmailLabel": "Contact Email",
+    "footerLeft": "ZIP QR — Wi-Fi QR Decoder • SCAN. REVEAL. CONNECT.",
+    "footerRight": "100% Local In-Browser QR Decoding • Zero Cloud Uploads",
+    "toastPasswordExtracted": "Password extracted for",
+    "toastDecodedPayload": "Decoded QR code",
+    "toastPasswordCopied": "Wi-Fi Password copied to clipboard!",
+    "toastSsidCopied": "SSID copied to clipboard!",
+    "toastAllCopied": "All network information copied to clipboard!",
+    "toastDownloadedTxt": "Downloaded decoded report (.txt)",
+    "toastDownloadedJson": "Downloaded decoded JSON (.json)",
+    "toastEnterPayload": "Please enter a QR payload string to decode.",
+    "toastHistoryEnabled": "Scan history enabled.",
+    "toastHistoryPaused": "Scan history paused.",
+    "toastHistoryCleared": "Cleared all scan history.",
+    "toastEntryDeleted": "Deleted entry from scan history.",
+    "toastThemeUpdated": "Theme updated.",
+    "toastDataWiped": "All local data and preferences have been cleared.",
+    "toastLanguageChanged": "Language switched to English.",
+    "toastDecodeError": "Could not decode a valid QR code from this image.",
+    "toastTorchUnsupported": "Flashlight control not supported on this camera."
+  }
+};
+
     // =========================================================================
     // APPLICATION STATE & STORAGE MANAGEMENT
     // =========================================================================
     const STORAGE_KEYS = {
       HISTORY: 'zip_wifi_qr_history_v1',
-      SETTINGS: 'zip_wifi_qr_settings_v1'
+      SETTINGS: 'zip_wifi_qr_settings_v1',
+      LANGUAGE: 'zip_qr_lang_v1'
     };
 
     let appSettings = {
+      language: 'ckb',
       historyEnabled: true,
       autoMaskPassword: false,
       accentTheme: 'electric-blue',
@@ -1381,13 +1695,27 @@ function decodeQRFromFile(file) {
     let scanIntervalId = null;
     let torchEnabled = false;
 
+    function getT() {
+      const lang = appSettings.language === 'en' ? 'en' : 'ckb';
+      return TRANSLATIONS[lang];
+    }
+
     function loadStoredState() {
       try {
         const rawSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+        const savedLang = localStorage.getItem(STORAGE_KEYS.LANGUAGE);
         if (rawSettings) {
-          appSettings = Object.assign({}, appSettings, JSON.parse(rawSettings));
+          const parsed = JSON.parse(rawSettings);
+          appSettings = Object.assign({}, appSettings, parsed);
         }
-      } catch (e) {}
+        if (savedLang === 'ckb' || savedLang === 'en') {
+          appSettings.language = savedLang;
+        } else if (appSettings.language !== 'ckb' && appSettings.language !== 'en') {
+          appSettings.language = 'ckb';
+        }
+      } catch (e) {
+        appSettings.language = 'ckb';
+      }
       try {
         const rawHistory = localStorage.getItem(STORAGE_KEYS.HISTORY);
         if (rawHistory) {
@@ -1400,6 +1728,7 @@ function decodeQRFromFile(file) {
     function saveSettingsState() {
       try {
         localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(appSettings));
+        localStorage.setItem(STORAGE_KEYS.LANGUAGE, appSettings.language);
       } catch (e) {}
       applySettingsToUI();
     }
@@ -1449,7 +1778,7 @@ function decodeQRFromFile(file) {
     function buildFormattedReport(res) {
       const lines = [
         '==================================================',
-        'ZIP WiFi QR Decoder — Decoded Credential Report',
+        'ZIP QR — Wi-Fi QR Decoder — Decoded Credential Report',
         'SCAN. REVEAL. CONNECT.',
         '==================================================',
         'Scan Timestamp     : ' + new Date(res.timestamp).toLocaleString(),
@@ -1497,6 +1826,87 @@ function decodeQRFromFile(file) {
     }
 
     // =========================================================================
+    // BILINGUAL LANGUAGE & RTL/LTR ENGINE
+    // =========================================================================
+    function applyLanguageToDOM() {
+      const lang = appSettings.language === 'en' ? 'en' : 'ckb';
+      const isRtl = lang === 'ckb';
+      const t = TRANSLATIONS[lang];
+
+      document.documentElement.setAttribute('lang', lang);
+      document.documentElement.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
+      document.body.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
+      document.title = t.brandDisplayTitle;
+
+      // Update all data-i18n text elements
+      document.querySelectorAll('[data-i18n]').forEach((el) => {
+        const key = el.getAttribute('data-i18n');
+        if (key && typeof t[key] === 'string') {
+          el.textContent = t[key];
+        }
+      });
+
+      // Update all data-i18n-placeholder input elements
+      document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (key && typeof t[key] === 'string') {
+          el.setAttribute('placeholder', t[key]);
+        }
+      });
+
+      // Update default camera option if present
+      const defCamOpt = document.getElementById('defaultCameraOption');
+      if (defCamOpt) defCamOpt.textContent = t.defaultCameraLabel;
+
+      // Update header language switcher buttons
+      const hdrCkb = document.getElementById('headerLangCkbBtn');
+      const hdrEn = document.getElementById('headerLangEnBtn');
+      if (hdrCkb && hdrEn) {
+        if (lang === 'ckb') {
+          hdrCkb.className = 'lang-switch-btn zip-gradient-btn rounded-lg px-2.5 py-1.5 text-xs font-bold text-white transition-all';
+          hdrEn.className = 'lang-switch-btn rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-400 hover:text-white transition-all';
+        } else {
+          hdrEn.className = 'lang-switch-btn zip-gradient-btn rounded-lg px-2.5 py-1.5 text-xs font-bold text-white transition-all';
+          hdrCkb.className = 'lang-switch-btn rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-400 hover:text-white transition-all';
+        }
+      }
+
+      // Update settings page language cards
+      const setCkb = document.getElementById('settingsLangCkbBtn');
+      const setEn = document.getElementById('settingsLangEnBtn');
+      if (setCkb && setEn) {
+        if (lang === 'ckb') {
+          setCkb.className = 'settings-lang-card rounded-2xl border border-sky-400 bg-sky-500/15 p-4 text-start transition';
+          setEn.className = 'settings-lang-card rounded-2xl border border-slate-800 zip-card p-4 text-start transition';
+        } else {
+          setEn.className = 'settings-lang-card rounded-2xl border border-sky-400 bg-sky-500/15 p-4 text-start transition';
+          setCkb.className = 'settings-lang-card rounded-2xl border border-slate-800 zip-card p-4 text-start transition';
+        }
+      }
+
+      // Update torch button label if scanner is inactive or active
+      const torchBtn = document.getElementById('scannerTorchBtn');
+      if (torchBtn) {
+        if (torchBtn.disabled) {
+          torchBtn.textContent = t.flashlightNA;
+        } else {
+          torchBtn.textContent = torchEnabled ? t.flashlightOn : t.flashlightOff;
+        }
+      }
+
+      // Re-render dynamic views so Results and History cards reflect the current language
+      renderResultsPage();
+      renderHistoryViews();
+    }
+
+    function setLanguage(newLang) {
+      const normalized = newLang === 'en' ? 'en' : 'ckb';
+      appSettings.language = normalized;
+      saveSettingsState();
+      showToast(TRANSLATIONS[normalized].toastLanguageChanged);
+    }
+
+    // =========================================================================
     // NAVIGATION & PAGE SWITCHING
     // =========================================================================
     function navigateTo(pageId) {
@@ -1515,9 +1925,9 @@ function decodeQRFromFile(file) {
       document.querySelectorAll('.nav-tab').forEach((btn) => {
         const target = btn.getAttribute('data-nav');
         if (target === pageId) {
-          btn.className = 'nav-tab zip-gradient-btn rounded-xl px-3 py-2 text-xs font-bold text-white transition-all sm:px-3.5';
+          btn.className = 'nav-tab zip-gradient-btn rounded-xl px-2.5 py-2 text-xs font-bold text-white transition-all sm:px-3.5';
         } else {
-          btn.className = 'nav-tab rounded-xl px-3 py-2 text-xs font-bold text-slate-400 hover:bg-slate-800/70 hover:text-white transition-all sm:px-3.5';
+          btn.className = 'nav-tab rounded-xl px-2.5 py-2 text-xs font-bold text-slate-400 hover:bg-slate-800/70 hover:text-white transition-all sm:px-3.5';
         }
       });
 
@@ -1535,6 +1945,7 @@ function decodeQRFromFile(file) {
     // HANDLE DECODED QR PAYLOAD
     // =========================================================================
     function handleDecodedQR(rawPayload, sourceLabel) {
+      const t = getT();
       const parsed = parseQRPayload(rawPayload);
       currentResult = parsed;
       currentSourceLabel = sourceLabel || 'QR Scan';
@@ -1558,9 +1969,9 @@ function decodeQRFromFile(file) {
 
       navigateTo('results');
       if (parsed.hasPasswordField && parsed.password !== null) {
-        showToast('Password extracted for "' + parsed.ssid + '"!');
+        showToast(t.toastPasswordExtracted + ' "' + parsed.ssid + '"!');
       } else {
-        showToast('Decoded QR code (' + parsed.formatLabel + ')');
+        showToast(t.toastDecodedPayload + ' (' + parsed.formatLabel + ')');
       }
     }
 
@@ -1568,8 +1979,10 @@ function decodeQRFromFile(file) {
     // RENDER RESULTS PAGE
     // =========================================================================
     function renderResultsPage() {
+      const t = getT();
       const emptyEl = document.getElementById('resultsEmptyState');
       const wrapEl = document.getElementById('resultsContentWrap');
+      if (!emptyEl || !wrapEl) return;
       if (!currentResult) {
         emptyEl.classList.remove('hidden');
         wrapEl.classList.add('hidden');
@@ -1579,9 +1992,10 @@ function decodeQRFromFile(file) {
       wrapEl.classList.remove('hidden');
 
       document.getElementById('resCategoryBadge').textContent = currentResult.category;
-      document.getElementById('resSourceBadge').textContent = 'Source: ' + currentSourceLabel;
+      document.getElementById('resSourceBadge').textContent = t.sourcePrefix + ' ' + currentSourceLabel;
       document.getElementById('resSsidHeading').textContent = currentResult.ssid;
-      document.getElementById('resTimestampText').textContent = 'Decoded on ' + new Date(currentResult.timestamp).toLocaleString();
+      document.getElementById('resTimestampText').textContent =
+        t.decodedOnPrefix + ' ' + new Date(currentResult.timestamp).toLocaleString();
 
       const passValContainer = document.getElementById('resPasswordValueContainer');
       const noPassNotice = document.getElementById('resNoPasswordNotice');
@@ -1589,20 +2003,27 @@ function decodeQRFromFile(file) {
       const passField = document.getElementById('resPasswordField');
       const toggleBtn = document.getElementById('resTogglePasswordBtn');
 
+      const localizedNoPassMsg =
+        currentResult.securityType === 'nopass'
+          ? t.openNetworkNoPasswordMsg
+          : currentResult.category === 'DPP'
+          ? t.dppNoPasswordMsg
+          : t.noPasswordEncodedMsg;
+
       if (currentResult.hasPasswordField && currentResult.password !== null) {
         passValContainer.classList.remove('hidden');
         noPassNotice.classList.add('hidden');
-        passCharCount.textContent = currentResult.password.length + ' chars';
+        passCharCount.textContent = currentResult.password.length + ' ' + t.charsSuffix;
         passCharCount.classList.remove('hidden');
         passField.textContent = isPasswordVisible
           ? currentResult.password
           : '•'.repeat(Math.min(24, Math.max(8, currentResult.password.length)));
-        toggleBtn.textContent = isPasswordVisible ? 'HIDE PASSWORD' : 'SHOW PASSWORD';
+        toggleBtn.textContent = isPasswordVisible ? t.btnHidePassword : t.btnShowPassword;
       } else {
         passValContainer.classList.add('hidden');
         noPassNotice.classList.remove('hidden');
         passCharCount.classList.add('hidden');
-        noPassNotice.textContent = currentResult.passwordStatusMessage;
+        noPassNotice.textContent = localizedNoPassMsg;
       }
 
       // Warnings
@@ -1619,14 +2040,21 @@ function decodeQRFromFile(file) {
         warnBox.classList.add('hidden');
       }
 
+      const localizedHidden =
+        currentResult.hiddenDisplay === 'Yes'
+          ? t.hiddenYes
+          : currentResult.hiddenDisplay === 'No'
+          ? t.hiddenNo
+          : t.hiddenNA;
+
       // Network Information Grid
       document.getElementById('infoSsid').textContent = currentResult.ssid;
       document.getElementById('infoPassword').textContent =
         currentResult.hasPasswordField && currentResult.password !== null
           ? currentResult.password
-          : currentResult.passwordStatusMessage;
+          : localizedNoPassMsg;
       document.getElementById('infoSecurity').textContent = currentResult.securityDisplay;
-      document.getElementById('infoHidden').textContent = currentResult.hiddenDisplay;
+      document.getElementById('infoHidden').textContent = localizedHidden;
       document.getElementById('infoFormat').textContent = currentResult.formatLabel;
       document.getElementById('infoRawPayload').textContent = currentResult.rawPayload;
 
@@ -1636,7 +2064,7 @@ function decodeQRFromFile(file) {
       if (!currentResult.extraFields || currentResult.extraFields.length === 0) {
         const p = document.createElement('p');
         p.className = 'text-xs text-slate-400 sm:col-span-2';
-        p.textContent = 'No additional optional parameters are encoded in this QR code.';
+        p.textContent = t.infoNoExtraParams;
         extraContainer.appendChild(p);
       } else {
         currentResult.extraFields.forEach((item) => {
@@ -1646,7 +2074,8 @@ function decodeQRFromFile(file) {
           lbl.className = 'text-[11px] font-semibold text-slate-400';
           lbl.textContent = item.label;
           const val = document.createElement('p');
-          val.className = 'font-mono-code mt-1 break-all text-xs text-white';
+          val.setAttribute('dir', 'ltr');
+          val.className = 'font-mono-code mt-1 break-all text-left text-xs text-white';
           val.textContent = item.value;
           card.appendChild(lbl);
           card.appendChild(val);
@@ -1658,8 +2087,8 @@ function decodeQRFromFile(file) {
     // =========================================================================
     // RENDER HISTORY LISTS
     // =========================================================================
-
     function createHistoryCardElement(entry, compact) {
+      const t = getT();
       const res = entry.result;
       const row = document.createElement('div');
       row.className = 'flex flex-col justify-between gap-3 rounded-2xl border border-slate-800/90 zip-card p-4 transition hover:border-sky-500/40 sm:flex-row sm:items-center';
@@ -1671,6 +2100,7 @@ function decodeQRFromFile(file) {
       badges.className = 'flex flex-wrap items-center gap-2';
 
       const catBadge = document.createElement('span');
+      catBadge.setAttribute('dir', 'ltr');
       catBadge.className = 'rounded-lg border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-sky-300';
       catBadge.textContent = res.category === 'WIFI' ? res.securityType : res.category;
       badges.appendChild(catBadge);
@@ -1678,17 +2108,19 @@ function decodeQRFromFile(file) {
       if (res.hiddenNetwork) {
         const hBadge = document.createElement('span');
         hBadge.className = 'rounded-lg border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-300';
-        hBadge.textContent = 'Hidden SSID';
+        hBadge.textContent = t.badgeHiddenSsid;
         badges.appendChild(hBadge);
       }
 
       const dateSpan = document.createElement('span');
+      dateSpan.setAttribute('dir', 'ltr');
       dateSpan.className = 'text-[11px] text-slate-400';
       dateSpan.textContent = new Date(entry.timestamp).toLocaleString();
       badges.appendChild(dateSpan);
 
       const title = document.createElement('h4');
-      title.className = 'mt-1.5 truncate text-base font-bold text-white';
+      title.setAttribute('dir', 'ltr');
+      title.className = 'font-mono-code mt-1.5 truncate text-start text-base font-bold text-white';
       title.textContent = entry.ssid;
 
       left.appendChild(badges);
@@ -1696,10 +2128,12 @@ function decodeQRFromFile(file) {
 
       if (!compact) {
         const sub = document.createElement('p');
-        sub.className = 'font-mono-code mt-1 truncate text-xs text-slate-400';
+        sub.className = 'mt-1 truncate text-xs text-slate-400';
         sub.textContent = res.hasPasswordField && res.password !== null
-          ? 'Password extracted (' + res.password.length + ' chars) • ' + res.securityDisplay
-          : res.passwordStatusMessage;
+          ? t.historyPasswordExtractedPrefix + ' (' + res.password.length + ' ' + t.charsSuffix + ') • ' + res.securityDisplay
+          : res.securityType === 'nopass'
+          ? t.openNetworkNoPasswordMsg
+          : t.noPasswordEncodedMsg;
         left.appendChild(sub);
       }
 
@@ -1709,7 +2143,7 @@ function decodeQRFromFile(file) {
       const openBtn = document.createElement('button');
       openBtn.type = 'button';
       openBtn.className = 'rounded-xl bg-sky-500/15 px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-sky-300 hover:bg-sky-500/25';
-      openBtn.textContent = 'Open Result';
+      openBtn.textContent = t.btnOpenResult;
       openBtn.addEventListener('click', () => {
         currentResult = res;
         currentSourceLabel = 'Scan History';
@@ -1722,11 +2156,11 @@ function decodeQRFromFile(file) {
         const delBtn = document.createElement('button');
         delBtn.type = 'button';
         delBtn.className = 'rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20';
-        delBtn.textContent = 'Delete';
+        delBtn.textContent = t.btnDeleteEntry;
         delBtn.addEventListener('click', () => {
           scanHistory = scanHistory.filter((item) => item.id !== entry.id);
           saveHistoryState();
-          showToast('Deleted entry from scan history.');
+          showToast(getT().toastEntryDeleted);
         });
         actions.appendChild(delBtn);
       }
@@ -1737,6 +2171,7 @@ function decodeQRFromFile(file) {
     }
 
     function renderHistoryViews() {
+      const t = getT();
       const badge = document.getElementById('navHistoryBadge');
       if (badge) badge.textContent = String(scanHistory.length);
 
@@ -1747,7 +2182,7 @@ function decodeQRFromFile(file) {
         if (scanHistory.length === 0) {
           const empty = document.createElement('div');
           empty.className = 'rounded-2xl border border-slate-800/70 zip-card p-6 text-center text-xs text-slate-400';
-          empty.textContent = 'No QR codes scanned yet. Use SCAN QR CODE, UPLOAD QR IMAGE, or PASTE QR CONTENT above to decode a QR code.';
+          empty.textContent = t.emptyRecentText;
           homeList.appendChild(empty);
         } else {
           scanHistory.slice(0, 3).forEach((entry) => {
@@ -1774,9 +2209,7 @@ function decodeQRFromFile(file) {
         if (filtered.length === 0) {
           const empty = document.createElement('div');
           empty.className = 'rounded-3xl border border-slate-800 zip-surface p-10 text-center text-xs text-slate-400';
-          empty.textContent = scanHistory.length === 0
-            ? 'Your local scan history is currently empty.'
-            : 'No scan history entries match your search filter.';
+          empty.textContent = scanHistory.length === 0 ? t.historyEmptyText : t.historyNoMatchText;
           fullList.appendChild(empty);
         } else {
           filtered.forEach((entry) => {
@@ -1807,6 +2240,7 @@ function decodeQRFromFile(file) {
 
     async function startLiveCameraScanner(preferredDeviceId) {
       stopLiveCameraScanner();
+      const t = getT();
       const video = document.getElementById('scannerVideo');
       const reticle = document.getElementById('scannerReticleOverlay');
       const fallbackBox = document.getElementById('scannerFallbackBox');
@@ -1819,14 +2253,14 @@ function decodeQRFromFile(file) {
         video.classList.add('hidden');
         reticle.classList.add('hidden');
         fallbackBox.classList.remove('hidden');
-        fallbackReason.textContent = 'Camera API (getUserMedia) is unavailable in this browser context. You can upload any PNG, JPG, or WEBP QR image directly.';
+        fallbackReason.textContent = t.scannerFallbackNoApi;
         return;
       }
 
       video.classList.remove('hidden');
       reticle.classList.remove('hidden');
       fallbackBox.classList.add('hidden');
-      statusPill.textContent = 'Opening camera stream...';
+      statusPill.textContent = t.scannerOpeningStream;
 
       const constraints = {
         audio: false,
@@ -1844,7 +2278,7 @@ function decodeQRFromFile(file) {
           video.classList.add('hidden');
           reticle.classList.add('hidden');
           fallbackBox.classList.remove('hidden');
-          fallbackReason.textContent = 'Camera access was denied or no camera hardware was detected. Use the Upload QR Image button below to decode from a file.';
+          fallbackReason.textContent = t.scannerFallbackDenied;
           return;
         }
       }
@@ -1853,7 +2287,7 @@ function decodeQRFromFile(file) {
       try {
         await video.play();
       } catch (e) {}
-      statusPill.textContent = 'Scanning for Wi-Fi QR Code...';
+      statusPill.textContent = getT().scannerAlignPrompt;
 
       // Populate camera list
       try {
@@ -1864,7 +2298,7 @@ function decodeQRFromFile(file) {
           cams.forEach((c, idx) => {
             const opt = document.createElement('option');
             opt.value = c.deviceId;
-            opt.textContent = c.label || ('Camera ' + (idx + 1));
+            opt.textContent = c.label || (getT().cameraItemPrefix + ' ' + (idx + 1));
             camSelect.appendChild(opt);
           });
           const activeTrack = activeStream.getVideoTracks()[0];
@@ -1885,11 +2319,11 @@ function decodeQRFromFile(file) {
       if (hasTorch) {
         torchBtn.disabled = false;
         torchBtn.className = 'rounded-xl border border-slate-700 bg-slate-800 px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-200 hover:border-sky-400';
-        torchBtn.textContent = 'Flashlight: OFF';
+        torchBtn.textContent = getT().flashlightOff;
       } else {
         torchBtn.disabled = true;
         torchBtn.className = 'rounded-xl border border-slate-800 bg-slate-900/60 px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-not-allowed';
-        torchBtn.textContent = 'Flashlight N/A';
+        torchBtn.textContent = getT().flashlightNA;
       }
 
       scanIntervalId = setInterval(async () => {
@@ -1917,11 +2351,13 @@ function decodeQRFromFile(file) {
       document.querySelectorAll('.theme-card').forEach((btn) => {
         const t = btn.getAttribute('data-theme-choice');
         if (t === appSettings.accentTheme) {
-          btn.className = 'theme-card rounded-2xl border border-sky-400 bg-sky-500/15 p-4 text-left transition';
+          btn.className = 'theme-card rounded-2xl border border-sky-400 bg-sky-500/15 p-4 text-start transition';
         } else {
-          btn.className = 'theme-card rounded-2xl border border-slate-800 zip-card p-4 text-left transition';
+          btn.className = 'theme-card rounded-2xl border border-slate-800 zip-card p-4 text-start transition';
         }
       });
+
+      applyLanguageToDOM();
     }
 
     // =========================================================================
@@ -1929,8 +2365,6 @@ function decodeQRFromFile(file) {
     // =========================================================================
     window.addEventListener('DOMContentLoaded', () => {
       loadStoredState();
-      applySettingsToUI();
-
       if (scanHistory.length > 0) {
         currentResult = scanHistory[0].result;
         currentSourceLabel = 'Recent History';
@@ -1938,8 +2372,16 @@ function decodeQRFromFile(file) {
         currentResult = null;
         currentSourceLabel = '';
       }
-      renderHistoryViews();
+      applySettingsToUI();
       navigateTo('home');
+
+      // Language switcher buttons (Header + Settings)
+      document.querySelectorAll('[data-lang-switch]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const targetLang = btn.getAttribute('data-lang-switch');
+          setLanguage(targetLang);
+        });
+      });
 
       // Navigation tabs
       document.querySelectorAll('.nav-tab').forEach((btn) => {
@@ -1960,7 +2402,7 @@ function decodeQRFromFile(file) {
           handleDecodedQR(pasteInput.value.trim(), 'Pasted QR Content');
           pasteInput.value = '';
         } else {
-          showToast('Please paste a QR payload string to decode.');
+          showToast(getT().toastEnterPayload);
         }
       };
       document.getElementById('homePasteDecodeBtn').addEventListener('click', triggerHomePasteDecode);
@@ -1987,7 +2429,7 @@ function decodeQRFromFile(file) {
           const payload = await decodeQRFromFile(file);
           handleDecodedQR(payload, 'Uploaded Image (' + file.name + ')');
         } catch (err) {
-          showToast(err && err.message ? err.message : 'Could not decode QR image.');
+          showToast(getT().toastDecodeError);
         } finally {
           fileInput.value = '';
         }
@@ -2011,7 +2453,7 @@ function decodeQRFromFile(file) {
           const payload = await decodeQRFromFile(file);
           handleDecodedQR(payload, 'Dropped Image (' + file.name + ')');
         } catch (err) {
-          showToast(err && err.message ? err.message : 'Could not decode dropped QR image.');
+          showToast(getT().toastDecodeError);
         }
       });
 
@@ -2031,9 +2473,9 @@ function decodeQRFromFile(file) {
         try {
           torchEnabled = !torchEnabled;
           await track.applyConstraints({ advanced: [{ torch: torchEnabled }] });
-          document.getElementById('scannerTorchBtn').textContent = torchEnabled ? 'Flashlight: ON' : 'Flashlight: OFF';
+          document.getElementById('scannerTorchBtn').textContent = torchEnabled ? getT().flashlightOn : getT().flashlightOff;
         } catch (e) {
-          showToast('Flashlight control not supported on this camera.');
+          showToast(getT().toastTorchUnsupported);
         }
       });
 
@@ -2050,41 +2492,41 @@ function decodeQRFromFile(file) {
       document.getElementById('resCopyPasswordBtn').addEventListener('click', async () => {
         if (!currentResult || !currentResult.hasPasswordField || currentResult.password === null) return;
         const ok = await copyToClipboardSafe(currentResult.password);
-        if (ok) showToast('Wi-Fi Password copied to clipboard!');
+        if (ok) showToast(getT().toastPasswordCopied);
       });
 
       document.getElementById('resCopySsidBtn').addEventListener('click', async () => {
         if (!currentResult) return;
         const ok = await copyToClipboardSafe(currentResult.ssid);
-        if (ok) showToast('SSID "' + currentResult.ssid + '" copied to clipboard!');
+        if (ok) showToast(getT().toastSsidCopied);
       });
 
       document.getElementById('resCopyAllBtn').addEventListener('click', async () => {
         if (!currentResult) return;
         const report = buildFormattedReport(currentResult);
         const ok = await copyToClipboardSafe(report);
-        if (ok) showToast('All network information copied to clipboard!');
+        if (ok) showToast(getT().toastAllCopied);
       });
 
       document.getElementById('resDownloadTxtBtn').addEventListener('click', () => {
         if (!currentResult) return;
         downloadReportFile(currentResult, 'txt');
-        showToast('Downloaded decoded report (.txt)');
+        showToast(getT().toastDownloadedTxt);
       });
 
       document.getElementById('resDownloadJsonBtn').addEventListener('click', () => {
         if (!currentResult) return;
         downloadReportFile(currentResult, 'json');
-        showToast('Downloaded decoded JSON (.json)');
+        showToast(getT().toastDownloadedJson);
       });
 
       document.getElementById('manualDecodeBtn').addEventListener('click', () => {
         const input = document.getElementById('manualPayloadInput');
         if (input && input.value.trim()) {
-          handleDecodedQR(input.value.trim(), 'Manual Payload Input');
+          handleDecodedQR(input.value.trim(), 'Pasted QR Content');
           input.value = '';
         } else {
-          showToast('Please enter a QR payload string to decode.');
+          showToast(getT().toastEnterPayload);
         }
       });
 
@@ -2093,7 +2535,7 @@ function decodeQRFromFile(file) {
       document.getElementById('historyToggleCheckbox').addEventListener('change', (e) => {
         appSettings.historyEnabled = e.target.checked;
         saveSettingsState();
-        showToast(appSettings.historyEnabled ? 'Scan history enabled.' : 'Scan history paused.');
+        showToast(appSettings.historyEnabled ? getT().toastHistoryEnabled : getT().toastHistoryPaused);
       });
       document.getElementById('historyClearAllBtn').addEventListener('click', () => {
         document.getElementById('historyClearModal').classList.remove('hidden');
@@ -2105,7 +2547,7 @@ function decodeQRFromFile(file) {
         scanHistory = [];
         saveHistoryState();
         document.getElementById('historyClearModal').classList.add('hidden');
-        showToast('Cleared all scan history.');
+        showToast(getT().toastHistoryCleared);
       });
 
       // Settings controls
@@ -2113,7 +2555,7 @@ function decodeQRFromFile(file) {
         btn.addEventListener('click', () => {
           appSettings.accentTheme = btn.getAttribute('data-theme-choice');
           saveSettingsState();
-          showToast('Theme updated.');
+          showToast(getT().toastThemeUpdated);
         });
       });
       document.getElementById('settingsMaskCheckbox').addEventListener('change', (e) => {
@@ -2131,8 +2573,10 @@ function decodeQRFromFile(file) {
         document.getElementById('settingsWipeConfirmBox').classList.add('hidden');
       });
       document.getElementById('settingsConfirmWipeBtn').addEventListener('click', () => {
+        const preservedLang = appSettings.language || 'ckb';
         scanHistory = [];
         appSettings = {
+          language: preservedLang,
           historyEnabled: true,
           autoMaskPassword: false,
           accentTheme: 'electric-blue',
@@ -2140,11 +2584,12 @@ function decodeQRFromFile(file) {
         };
         try {
           localStorage.removeItem(STORAGE_KEYS.HISTORY);
-          localStorage.removeItem(STORAGE_KEYS.SETTINGS);
+          localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(appSettings));
+          localStorage.setItem(STORAGE_KEYS.LANGUAGE, preservedLang);
         } catch (e) {}
         applySettingsToUI();
         renderHistoryViews();
         document.getElementById('settingsWipeConfirmBox').classList.add('hidden');
-        showToast('All local data and preferences have been cleared.');
+        showToast(getT().toastDataWiped);
       });
     });

@@ -1,8 +1,8 @@
 <!-- TOP NAVIGATION HEADER -->
   <header class="sticky top-0 z-40 border-b border-slate-800/80 bg-[#050811]/90 backdrop-blur-xl">
     <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
-      <button id="brandHomeBtn" type="button" class="flex items-center gap-3 text-left focus:outline-none group">
-        <div class="flex h-10 w-10 items-center justify-center rounded-xl zip-gradient-btn transition-transform group-hover:scale-105">
+      <button id="brandHomeBtn" type="button" class="flex items-center gap-3 text-start focus:outline-none group">
+        <div class="flex h-10 w-10 items-center justify-center rounded-xl zip-gradient-btn transition-transform group-hover:scale-105 shrink-0">
           <svg class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <rect x="3" y="3" width="7" height="7" rx="1.5" />
             <rect x="14" y="3" width="7" height="7" rx="1.5" />
@@ -11,29 +11,51 @@
           </svg>
         </div>
         <div>
-          <div class="flex items-center gap-2">
-            <span class="text-base font-extrabold tracking-tight text-white sm:text-lg">ZIP WiFi QR Decoder</span>
-            <span class="hidden rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-300 md:inline-block">Local PWA</span>
+          <div class="flex flex-wrap items-center gap-2">
+            <span id="headerBrandPrimary" dir="ltr" class="text-base font-extrabold tracking-tight text-white sm:text-lg">ZIP QR</span>
+            <span id="headerBrandSecondary" dir="ltr" class="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-300">Wi-Fi QR Decoder</span>
           </div>
-          <p class="font-mono-code text-[10px] font-bold tracking-[0.22em] text-slate-400">SCAN. REVEAL. CONNECT.</p>
+          <p id="headerTagline" dir="ltr" class="font-mono-code text-[10px] font-bold tracking-[0.22em] text-slate-400">SCAN. REVEAL. CONNECT.</p>
         </div>
       </button>
 
-      <!-- Responsive Navigation Pills -->
-      <nav class="flex flex-wrap items-center gap-1 sm:gap-1.5" aria-label="Main Navigation">
-        <button type="button" data-nav="home" class="nav-tab rounded-xl px-3 py-2 text-xs font-bold transition-all sm:px-3.5">Home</button>
-        <button type="button" data-nav="scanner" class="nav-tab rounded-xl px-3 py-2 text-xs font-bold transition-all sm:px-3.5">Scanner</button>
-        <button type="button" data-nav="results" class="nav-tab rounded-xl px-3 py-2 text-xs font-bold transition-all sm:px-3.5">Results</button>
-        <button type="button" data-nav="history" class="nav-tab rounded-xl px-3 py-2 text-xs font-bold transition-all sm:px-3.5">
-          History <span id="navHistoryBadge" class="ml-1 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] text-sky-300">0</span>
-        </button>
-        <button type="button" data-nav="settings" class="nav-tab rounded-xl px-3 py-2 text-xs font-bold transition-all sm:px-3.5">Settings</button>
-      </nav>
+      <!-- Navigation & Language Selector -->
+      <div class="flex flex-wrap items-center gap-2">
+        <nav class="flex flex-wrap items-center gap-1 sm:gap-1.5" aria-label="Main Navigation">
+          <button type="button" data-nav="home" class="nav-tab rounded-xl px-2.5 py-2 text-xs font-bold transition-all sm:px-3.5">
+            <span data-i18n="navHome">سەرەکی</span>
+          </button>
+          <button type="button" data-nav="scanner" class="nav-tab rounded-xl px-2.5 py-2 text-xs font-bold transition-all sm:px-3.5">
+            <span data-i18n="navScanner">سکانەر</span>
+          </button>
+          <button type="button" data-nav="results" class="nav-tab rounded-xl px-2.5 py-2 text-xs font-bold transition-all sm:px-3.5">
+            <span data-i18n="navResults">ئەنجامەکان</span>
+          </button>
+          <button type="button" data-nav="history" class="nav-tab rounded-xl px-2.5 py-2 text-xs font-bold transition-all sm:px-3.5">
+            <span data-i18n="navHistory">مێژوو</span>
+            <span id="navHistoryBadge" dir="ltr" class="ms-1 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] text-sky-300">0</span>
+          </button>
+          <button type="button" data-nav="settings" class="nav-tab rounded-xl px-2.5 py-2 text-xs font-bold transition-all sm:px-3.5">
+            <span data-i18n="navSettings">ڕێکخستنەکان</span>
+          </button>
+        </nav>
+
+        <!-- Language Switcher: کوردی | English -->
+        <div class="inline-flex items-center rounded-xl border border-slate-700/90 bg-[#0a1020] p-0.5" role="group" aria-label="Language Selector">
+          <button id="headerLangCkbBtn" type="button" data-lang-switch="ckb" class="lang-switch-btn rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all">
+            کوردی
+          </button>
+          <span class="px-0.5 text-xs text-slate-600" aria-hidden="true">|</span>
+          <button id="headerLangEnBtn" type="button" data-lang-switch="en" dir="ltr" class="lang-switch-btn rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all">
+            English
+          </button>
+        </div>
+      </div>
     </div>
   </header>
 
   <!-- TOAST NOTIFICATION BANNER -->
-  <div id="toastBanner" class="fixed bottom-5 right-5 z-50 hidden max-w-sm rounded-2xl border border-sky-500/40 bg-[#0c1428]/95 px-4 py-3 text-xs font-semibold text-white shadow-2xl backdrop-blur-md transition-all"></div>
+  <div id="toastBanner" class="fixed bottom-5 end-5 z-50 hidden max-w-sm rounded-2xl border border-sky-500/40 bg-[#0c1428]/95 px-4 py-3 text-xs font-semibold text-white shadow-2xl backdrop-blur-md transition-all"></div>
 
   <!-- HIDDEN FILE INPUT SHARED FOR QUICK GALLERY UPLOAD -->
   <input id="globalQrFileInput" type="file" accept="image/png,image/jpeg,image/jpg,image/webp" class="hidden" />
@@ -47,31 +69,34 @@
       <div class="relative overflow-hidden rounded-3xl border border-slate-800/90 bg-gradient-to-br from-[#0c152c] via-[#070b16] to-[#140b29] p-6 shadow-2xl sm:p-10">
         <div class="mx-auto max-w-3xl text-center">
           <div class="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-3.5 py-1 text-[11px] font-bold uppercase tracking-widest text-sky-300">
-            <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-            <span>100% Local In-Browser Decoding • Zero Server Uploads</span>
+            <span class="h-2 w-2 rounded-full bg-emerald-400 shrink-0"></span>
+            <span data-i18n="heroBadge">١٠٠٪ شیکردنەوەی ناوخۆیی لەناو وێبگەڕ • بێ ناردن بۆ سێرڤەر</span>
           </div>
 
-          <h1 class="text-3xl font-black tracking-tight text-white sm:text-5xl">ZIP WiFi QR Decoder</h1>
-          <p class="mt-2 font-mono-code text-xs font-bold uppercase tracking-[0.28em] text-purple-300 sm:text-sm">SCAN. REVEAL. CONNECT.</p>
-          <p class="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-slate-300 sm:text-base">
-            Scan any Wi-Fi QR code with your camera or upload a QR image (PNG, JPG, WEBP) to immediately extract and reveal the exact encoded <strong>Wi-Fi Password</strong>, <strong>SSID</strong>, <strong>Security Type</strong> (WPA, WPA2, WPA3, WEP, Open, DPP), and <strong>Hidden Network Status</strong>.
+          <h1 dir="ltr" class="text-3xl font-black tracking-tight text-white sm:text-5xl">
+            <span>ZIP QR</span>
+            <span class="text-xl font-bold text-sky-400 sm:text-3xl"> — Wi-Fi QR Decoder</span>
+          </h1>
+          <p dir="ltr" class="mt-2 font-mono-code text-xs font-bold uppercase tracking-[0.28em] text-purple-300 sm:text-sm">SCAN. REVEAL. CONNECT.</p>
+          <p data-i18n="heroDescription" class="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-slate-300 sm:text-base">
+            هەر کۆدێکی QRـی وای-فای بە کامێرا سکان بکە یان وێنەی QR باربکە (PNG، JPG، JPEG، WEBP) بۆ دەرهێنان و پیشاندانی دەستبەجێی تێپەڕەوشەی وای-فای، ناوی تۆڕ (SSID)، جۆری پاراستن (WPA، WPA2، WPA3، WEP، کراوە، DPP)، و دۆخی تۆڕی شاراوە.
           </p>
 
           <!-- Primary CTA Buttons -->
           <div class="mt-8 flex flex-col items-stretch justify-center gap-3.5 sm:flex-row sm:items-center">
             <button id="homeScanBtn" type="button" class="zip-gradient-btn flex items-center justify-center gap-2.5 rounded-2xl px-8 py-4 text-sm font-black uppercase tracking-wider text-white transition hover:brightness-110">
-              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                 <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2" stroke-linecap="round"/>
                 <rect x="7" y="7" width="10" height="10" rx="2"/>
               </svg>
-              <span>SCAN QR CODE</span>
+              <span data-i18n="btnScanQrCode">سکانکردنی کۆدی QR</span>
             </button>
 
             <button id="homeUploadBtn" type="button" class="flex items-center justify-center gap-2.5 rounded-2xl border border-purple-500/50 bg-purple-500/15 px-8 py-4 text-sm font-black uppercase tracking-wider text-purple-200 transition hover:bg-purple-500/25">
-              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span>UPLOAD QR IMAGE</span>
+              <span data-i18n="btnUploadQrImage">بارکردنی وێنەی QR</span>
             </button>
           </div>
         </div>
@@ -88,14 +113,14 @@
                 <rect x="7" y="7" width="10" height="10" rx="2"/>
               </svg>
             </div>
-            <span class="text-[11px] font-bold uppercase tracking-widest text-sky-400">1. Live Camera</span>
-            <h2 class="mt-1 text-lg font-bold text-white">SCAN QR CODE</h2>
-            <p class="mt-1.5 text-xs leading-relaxed text-slate-400">
-              Open your device camera to automatically detect and decode a physical Wi-Fi QR code in real time.
+            <span data-i18n="card1Step" class="text-[11px] font-bold uppercase tracking-widest text-sky-400">١. کامێرای ڕاستەوخۆ</span>
+            <h2 data-i18n="card1Title" class="mt-1 text-lg font-bold text-white">سکانکردنی کۆدی QR</h2>
+            <p data-i18n="card1Desc" class="mt-1.5 text-xs leading-relaxed text-slate-400">
+              کامێرای ئامێرەکەت بکەرەوە بۆ ناسینەوە و خوێندنەوەی خودکارانەی کۆدی QRـی وای-فای بە شێوەی ڕاستەوخۆ.
             </p>
           </div>
-          <button id="homeCardScanBtn" type="button" class="zip-gradient-btn mt-6 w-full rounded-2xl px-5 py-3.5 text-xs font-black uppercase tracking-wider text-white transition hover:brightness-110">
-            OPEN CAMERA SCANNER
+          <button id="homeCardScanBtn" type="button" data-i18n="card1Btn" class="zip-gradient-btn mt-6 w-full rounded-2xl px-5 py-3.5 text-xs font-black uppercase tracking-wider text-white transition hover:brightness-110">
+            کردنەوەی سکانەری کامێرا
           </button>
         </div>
 
@@ -109,14 +134,14 @@
                 <path d="M21 15l-5-5L5 21"/>
               </svg>
             </div>
-            <span class="text-[11px] font-bold uppercase tracking-widest text-purple-300">2. Image Picker &amp; Dropzone</span>
-            <h2 class="mt-1 text-lg font-bold text-white">UPLOAD QR IMAGE</h2>
-            <p class="mt-1.5 text-xs leading-relaxed text-slate-400">
-              Select or drag and drop a QR image file (PNG, JPG, JPEG, or WEBP) from your gallery or computer.
+            <span data-i18n="card2Step" class="text-[11px] font-bold uppercase tracking-widest text-purple-300">٢. هەڵبژاردنی وێنە و ڕاکێشان</span>
+            <h2 data-i18n="card2Title" class="mt-1 text-lg font-bold text-white">بارکردنی وێنەی QR</h2>
+            <p data-i18n="card2Desc" class="mt-1.5 text-xs leading-relaxed text-slate-400">
+              فایلی وێنەی کۆدی QR (PNG، JPG، JPEG، یان WEBP) لە گەلەری مۆبایل یان کۆمپیوتەرەکەت هەڵبژێرە یان ڕایبکێشە بۆ ئێرە.
             </p>
           </div>
-          <button id="dropzoneBrowseBtn" type="button" class="mt-6 w-full rounded-2xl border border-purple-500/50 bg-purple-500/15 px-5 py-3.5 text-xs font-black uppercase tracking-wider text-purple-200 transition hover:bg-purple-500/25">
-            SELECT QR IMAGE
+          <button id="dropzoneBrowseBtn" type="button" data-i18n="card2Btn" class="mt-6 w-full rounded-2xl border border-purple-500/50 bg-purple-500/15 px-5 py-3.5 text-xs font-black uppercase tracking-wider text-purple-200 transition hover:bg-purple-500/25">
+            هەڵبژاردنی وێنەی QR
           </button>
         </div>
 
@@ -129,28 +154,28 @@
                 <rect x="8" y="2" width="8" height="4" rx="1"/>
               </svg>
             </div>
-            <span class="text-[11px] font-bold uppercase tracking-widest text-emerald-300">3. Direct Payload</span>
-            <h2 class="mt-1 text-lg font-bold text-white">PASTE QR CONTENT</h2>
-            <p class="mt-1.5 text-xs leading-relaxed text-slate-400">
-              Paste an actual Wi-Fi QR payload string (<code class="text-sky-300">WIFI:...;;</code> or <code class="text-purple-300">DPP:...;;</code>) to extract its credentials.
+            <span data-i18n="card3Step" class="text-[11px] font-bold uppercase tracking-widest text-emerald-300">٣. دەقی ڕاستەوخۆی کۆد</span>
+            <h2 data-i18n="card3Title" class="mt-1 text-lg font-bold text-white">لکاندنی ناوەڕۆکی QR</h2>
+            <p data-i18n="card3Desc" class="mt-1.5 text-xs leading-relaxed text-slate-400">
+              دەقی ناوەڕۆکی کۆدی QRـی وای-فای (WIFI:...;; یان DPP:...;;) لێرە بلکێنە بۆ دەرهێنانی زانیارییەکانی بە دەستبەجێ.
             </p>
-            <input id="homePasteInput" type="text" placeholder="Paste WIFI:... or DPP:... payload here" class="font-mono-code mt-3 w-full rounded-xl border border-slate-700 bg-[#040710] px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-sky-400 focus:outline-none" />
+            <input id="homePasteInput" type="text" dir="ltr" data-i18n-placeholder="card3Placeholder" placeholder="دەقی WIFI:... یان DPP:... لێرە بلکێنە" class="font-mono-code mt-3 w-full rounded-xl border border-slate-700 bg-[#040710] px-3.5 py-2.5 text-left text-xs text-white placeholder-slate-500 focus:border-sky-400 focus:outline-none" />
           </div>
-          <button id="homePasteDecodeBtn" type="button" class="mt-4 w-full rounded-2xl border border-sky-500/40 bg-sky-500/15 px-5 py-3.5 text-xs font-black uppercase tracking-wider text-sky-300 transition hover:bg-sky-500/25">
-            DECODE QR CONTENT
+          <button id="homePasteDecodeBtn" type="button" data-i18n="card3Btn" class="mt-4 w-full rounded-2xl border border-sky-500/40 bg-sky-500/15 px-5 py-3.5 text-xs font-black uppercase tracking-wider text-sky-300 transition hover:bg-sky-500/25">
+            شیکردنەوەی ناوەڕۆکی QR
           </button>
         </div>
       </div>
 
       <!-- Recently Scanned Codes on Home Page -->
       <div class="rounded-3xl border border-slate-800/90 zip-surface p-6">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between gap-2">
           <div>
-            <h2 class="text-base font-bold text-white sm:text-lg">Recently Scanned Codes</h2>
-            <p class="text-xs text-slate-400">Locally saved QR scans on this device</p>
+            <h2 data-i18n="recentHeading" class="text-base font-bold text-white sm:text-lg">کۆدە سکانکراوەکانی دوایی</h2>
+            <p data-i18n="recentSubheading" class="text-xs text-slate-400">کۆدە پاشەکەوتکراوەکان بە شێوەی ناوخۆیی لەسەر ئەم ئامێرە</p>
           </div>
-          <button id="homeViewAllHistoryBtn" type="button" class="rounded-xl border border-slate-700 px-3.5 py-1.5 text-xs font-bold text-sky-300 hover:border-sky-400">
-            Manage History
+          <button id="homeViewAllHistoryBtn" type="button" data-i18n="btnManageHistory" class="rounded-xl border border-slate-700 px-3.5 py-1.5 text-xs font-bold text-sky-300 hover:border-sky-400">
+            بەڕێوەبردنی مێژوو
           </button>
         </div>
         <div id="homeRecentList" class="mt-4 space-y-3"></div>
@@ -161,11 +186,11 @@
     <section id="page-scanner" class="hidden mx-auto max-w-3xl space-y-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 class="text-2xl font-black text-white">Live Wi-Fi QR Scanner</h1>
-          <p class="text-xs text-slate-400">Align the Wi-Fi QR code inside the frame or select an image from your gallery.</p>
+          <h1 data-i18n="scannerTitle" class="text-2xl font-black text-white">سکانەری ڕاستەوخۆی QRـی وای-فای</h1>
+          <p data-i18n="scannerSubtitle" class="text-xs text-slate-400">کۆدی QRـی وای-فای بخەرە ناو چوارچێوەکە یان وێنەیەک لە گەلەری ئامێرەکەت هەڵبژێرە.</p>
         </div>
-        <button id="scannerCancelTopBtn" type="button" class="rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-200 hover:bg-slate-700">
-          Cancel
+        <button id="scannerCancelTopBtn" type="button" data-i18n="btnCancel" class="rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-200 hover:bg-slate-700">
+          پاشگەزبوونەوە
         </button>
       </div>
 
@@ -179,21 +204,21 @@
               <div class="scan-laser absolute inset-x-3 h-0.5 bg-gradient-to-r from-transparent via-sky-400 to-transparent shadow-[0_0_12px_#38bdf8]"></div>
             </div>
             <p id="scannerStatusPill" class="mt-4 rounded-full bg-black/75 px-4 py-1.5 text-xs font-semibold text-sky-300 backdrop-blur-md">
-              Requesting camera access...
+              داواکردنی مۆڵەتی کامێرا...
             </p>
           </div>
 
           <!-- Camera Fallback Notice -->
           <div id="scannerFallbackBox" class="hidden mx-auto max-w-md p-6 text-center">
             <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-400 font-bold text-xl">!</div>
-            <h2 class="text-base font-bold text-white">Camera Unavailable — Image Upload Active</h2>
+            <h2 data-i18n="scannerFallbackTitle" class="text-base font-bold text-white">کامێرا بەردەست نییە — بارکردنی وێنە چالاکە</h2>
             <p id="scannerFallbackReason" class="mt-2 text-xs leading-relaxed text-slate-300"></p>
             <div class="mt-4 flex flex-wrap items-center justify-center gap-2.5">
-              <button id="scannerRetryCameraBtn" type="button" class="rounded-xl border border-sky-500/40 bg-sky-500/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-sky-300 hover:bg-sky-500/25">
-                Retry Camera
+              <button id="scannerRetryCameraBtn" type="button" data-i18n="btnRetryCamera" class="rounded-xl border border-sky-500/40 bg-sky-500/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-sky-300 hover:bg-sky-500/25">
+                هەوڵدانەوەی کامێرا
               </button>
-              <button id="scannerFallbackUploadBtn" type="button" class="zip-gradient-btn rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider text-white">
-                Upload QR Image Instead
+              <button id="scannerFallbackUploadBtn" type="button" data-i18n="btnFallbackUpload" class="zip-gradient-btn rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider text-white">
+                بارکردنی وێنەی QR لەبری کامێرا
               </button>
             </div>
           </div>
@@ -203,20 +228,20 @@
         <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800/90 zip-card p-4">
           <div class="flex flex-wrap items-center gap-2">
             <select id="cameraDeviceSelect" aria-label="Camera selection" class="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-white">
-              <option value="">Default Environment Camera</option>
+              <option id="defaultCameraOption" value="">کامێرای بنەڕەتی ئامێر</option>
             </select>
 
             <button id="scannerTorchBtn" type="button" disabled class="rounded-xl border border-slate-800 bg-slate-900/60 px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-not-allowed">
-              Flashlight N/A
+              فلاش بەردەست نییە
             </button>
 
-            <button id="scannerGalleryBtn" type="button" class="rounded-xl border border-purple-500/40 bg-purple-500/15 px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-purple-200 hover:bg-purple-500/25">
-              Upload from Gallery
+            <button id="scannerGalleryBtn" type="button" data-i18n="btnUploadFromGallery" class="rounded-xl border border-purple-500/40 bg-purple-500/15 px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-purple-200 hover:bg-purple-500/25">
+              بارکردن لە گەلەرییەوە
             </button>
           </div>
 
-          <button id="scannerCancelBottomBtn" type="button" class="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-300 hover:bg-slate-700 hover:text-white">
-            Cancel
+          <button id="scannerCancelBottomBtn" type="button" data-i18n="btnCancel" class="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-300 hover:bg-slate-700 hover:text-white">
+            پاشگەزبوونەوە
           </button>
         </div>
       </div>
@@ -225,14 +250,14 @@
     <!-- ==================== PAGE 3: RESULTS ==================== -->
     <section id="page-results" class="hidden mx-auto max-w-4xl space-y-6">
       <div id="resultsEmptyState" class="rounded-3xl border border-slate-800 zip-surface p-8 text-center">
-        <h2 class="text-xl font-bold text-white">No QR Code Scanned Yet</h2>
-        <p class="mt-2 text-sm text-slate-400">Scan a Wi-Fi QR code with your camera, upload a QR image, or paste QR content on the Home page.</p>
+        <h2 data-i18n="resultsEmptyTitle" class="text-xl font-bold text-white">هێشتا هیچ کۆدێکی QR سکان نەکراوە</h2>
+        <p data-i18n="resultsEmptyDesc" class="mt-2 text-sm text-slate-400">لە پەڕەی سەرەکی کۆدێکی QRـی وای-فای بە کامێرا سکان بکە، وێنەیەک باربکە، یان دەقی کۆدەکە بلکێنە.</p>
         <div class="mt-6 flex flex-wrap justify-center gap-3">
-          <button id="resultsEmptyScanBtn" type="button" class="zip-gradient-btn rounded-2xl px-6 py-3 text-xs font-bold uppercase tracking-wider text-white">
-            Scan Wi-Fi QR
+          <button id="resultsEmptyScanBtn" type="button" data-i18n="btnScanQrCode" class="zip-gradient-btn rounded-2xl px-6 py-3 text-xs font-bold uppercase tracking-wider text-white">
+            سکانکردنی کۆدی QR
           </button>
-          <button id="resultsEmptyUploadBtn" type="button" class="rounded-2xl border border-purple-500/40 bg-purple-500/15 px-6 py-3 text-xs font-bold uppercase tracking-wider text-purple-200">
-            Upload QR Image
+          <button id="resultsEmptyUploadBtn" type="button" data-i18n="btnUploadQrImage" class="rounded-2xl border border-purple-500/40 bg-purple-500/15 px-6 py-3 text-xs font-bold uppercase tracking-wider text-purple-200">
+            بارکردنی وێنەی QR
           </button>
         </div>
       </div>
@@ -242,19 +267,19 @@
         <div class="flex flex-col justify-between gap-4 rounded-3xl border border-slate-800 zip-surface p-6 sm:flex-row sm:items-center">
           <div>
             <div class="flex flex-wrap items-center gap-2">
-              <span id="resCategoryBadge" class="rounded-lg border border-sky-500/40 bg-sky-500/15 px-2.5 py-0.5 text-xs font-bold uppercase text-sky-300">WIFI</span>
+              <span id="resCategoryBadge" dir="ltr" class="rounded-lg border border-sky-500/40 bg-sky-500/15 px-2.5 py-0.5 text-xs font-bold uppercase text-sky-300">WIFI</span>
               <span id="resSourceBadge" class="rounded-lg border border-slate-700 bg-slate-800/80 px-2.5 py-0.5 text-xs text-slate-300">Decoded</span>
             </div>
-            <h1 id="resSsidHeading" class="mt-2 break-all text-2xl font-black text-white sm:text-3xl"></h1>
+            <h1 id="resSsidHeading" dir="ltr" class="font-mono-code mt-2 break-all text-start text-2xl font-black text-white sm:text-3xl"></h1>
             <p id="resTimestampText" class="mt-1 text-xs text-slate-400"></p>
           </div>
 
           <div class="flex flex-wrap items-center gap-2.5">
-            <button id="resCopySsidBtn" type="button" class="rounded-xl border border-slate-700 bg-slate-800/90 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:border-sky-400">
-              Copy SSID
+            <button id="resCopySsidBtn" type="button" data-i18n="btnCopySsid" class="rounded-xl border border-slate-700 bg-slate-800/90 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:border-sky-400">
+              لەبەرگرتنەوەی ناوی تۆڕ (SSID)
             </button>
-            <button id="resScanAnotherTopBtn" type="button" class="zip-gradient-btn rounded-xl px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white hover:brightness-110">
-              SCAN ANOTHER CODE
+            <button id="resScanAnotherTopBtn" type="button" data-i18n="btnScanAnother" class="zip-gradient-btn rounded-xl px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white hover:brightness-110">
+              سکانکردنی کۆدێکی تر
             </button>
           </div>
         </div>
@@ -264,26 +289,26 @@
           <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
             <div class="flex items-center gap-2">
               <span class="inline-block h-2.5 w-2.5 rounded-full bg-sky-400 shadow-[0_0_10px_#38bdf8]"></span>
-              <h2 class="text-xs font-extrabold uppercase tracking-widest text-sky-300">EXTRACTED WI-FI PASSWORD</h2>
+              <h2 data-i18n="extractedPasswordHeading" class="text-xs font-extrabold uppercase tracking-widest text-sky-300">تێپەڕەوشەی دەرهێنراوی وای-فای</h2>
             </div>
-            <span id="resPasswordCharCount" class="rounded-md bg-slate-800/90 px-2.5 py-0.5 font-mono-code text-xs text-slate-300"></span>
+            <span id="resPasswordCharCount" dir="ltr" class="rounded-md bg-slate-800/90 px-2.5 py-0.5 font-mono-code text-xs text-slate-300"></span>
           </div>
 
           <!-- Active Password Box -->
           <div id="resPasswordValueContainer" class="mt-4">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div id="resPasswordField" class="font-mono-code flex-1 overflow-x-auto rounded-2xl border border-slate-700 bg-[#040710] px-5 py-4 text-xl font-extrabold tracking-wide text-white sm:text-2xl"></div>
+              <div id="resPasswordField" dir="ltr" class="font-mono-code flex-1 overflow-x-auto rounded-2xl border border-slate-700 bg-[#040710] px-5 py-4 text-left text-xl font-extrabold tracking-wide text-white sm:text-2xl"></div>
 
               <div class="flex flex-wrap items-center gap-2.5">
                 <button id="resTogglePasswordBtn" type="button" class="flex-1 rounded-xl border border-slate-700 bg-slate-800/90 px-4 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-200 transition hover:border-sky-400 hover:text-white sm:flex-initial">
-                  HIDE PASSWORD
+                  شاردنەوەی تێپەڕەوشە
                 </button>
-                <button id="resCopyPasswordBtn" type="button" class="zip-gradient-btn flex-1 rounded-xl px-5 py-3.5 text-xs font-black uppercase tracking-wider text-white transition hover:brightness-110 sm:flex-initial">
-                  COPY PASSWORD
+                <button id="resCopyPasswordBtn" type="button" data-i18n="btnCopyPassword" class="zip-gradient-btn flex-1 rounded-xl px-5 py-3.5 text-xs font-black uppercase tracking-wider text-white transition hover:brightness-110 sm:flex-initial">
+                  لەبەرگرتنەوەی تێپەڕەوشە
                 </button>
               </div>
             </div>
-            <p class="mt-2.5 text-xs text-slate-400">Decoded locally directly from the QR code payload with full special-character unescaping.</p>
+            <p data-i18n="passwordExactNote" class="mt-2.5 text-xs text-slate-400">ڕاستەوخۆ و بە شێوەی ناوخۆیی لە ناوەڕۆکی کۆدی QR دەرهێنراوە لەگەڵ چارەسەرکردنی تەواوی هێما تایبەتەکان.</p>
           </div>
 
           <!-- Missing / Open Network Password Notice -->
@@ -295,72 +320,72 @@
 
         <!-- NETWORK INFORMATION DETAILS CARD -->
         <div class="rounded-3xl border border-slate-800 zip-surface p-6">
-          <h2 class="text-sm font-bold uppercase tracking-widest text-sky-400">NETWORK INFORMATION</h2>
+          <h2 data-i18n="networkInfoHeading" class="text-sm font-bold uppercase tracking-widest text-sky-400">زانیارییەکانی تۆڕ</h2>
 
           <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div class="rounded-2xl border border-slate-800/90 zip-card p-4">
-              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">1. Wi-Fi Name (SSID)</span>
-              <p id="infoSsid" class="font-mono-code mt-1 break-all text-base font-bold text-white"></p>
+              <span data-i18n="infoLabel1Ssid" class="text-[11px] font-bold uppercase tracking-wider text-slate-400">١. ناوی تۆڕی وای-فای (SSID)</span>
+              <p id="infoSsid" dir="ltr" class="font-mono-code mt-1 break-all text-left text-base font-bold text-white"></p>
             </div>
 
             <div class="rounded-2xl border border-slate-800/90 zip-card p-4">
-              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">2. Wi-Fi Password</span>
-              <p id="infoPassword" class="font-mono-code mt-1 break-all text-base font-bold text-sky-300"></p>
+              <span data-i18n="infoLabel2Password" class="text-[11px] font-bold uppercase tracking-wider text-slate-400">٢. تێپەڕەوشەی وای-فای</span>
+              <p id="infoPassword" dir="ltr" class="font-mono-code mt-1 break-all text-left text-base font-bold text-sky-300"></p>
             </div>
 
             <div class="rounded-2xl border border-slate-800/90 zip-card p-4">
-              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">3. Security Type</span>
-              <p id="infoSecurity" class="mt-1 text-base font-bold text-white"></p>
+              <span data-i18n="infoLabel3Security" class="text-[11px] font-bold uppercase tracking-wider text-slate-400">٣. جۆری پاراستن (Security Type)</span>
+              <p id="infoSecurity" dir="ltr" class="mt-1 text-left text-base font-bold text-white"></p>
             </div>
 
             <div class="rounded-2xl border border-slate-800/90 zip-card p-4">
-              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">4. Hidden Network Status</span>
+              <span data-i18n="infoLabel4Hidden" class="text-[11px] font-bold uppercase tracking-wider text-slate-400">٤. دۆخی تۆڕی شاراوە</span>
               <p id="infoHidden" class="mt-1 text-base font-bold text-white"></p>
             </div>
 
             <div class="rounded-2xl border border-slate-800/90 zip-card p-4 sm:col-span-2">
-              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">5. QR Payload Format</span>
-              <p id="infoFormat" class="mt-1 text-sm font-semibold text-purple-300"></p>
+              <span data-i18n="infoLabel5Format" class="text-[11px] font-bold uppercase tracking-wider text-slate-400">٥. جۆری فۆرماتی کۆدی QR</span>
+              <p id="infoFormat" dir="ltr" class="mt-1 text-left text-sm font-semibold text-purple-300"></p>
             </div>
           </div>
 
           <!-- 6. All Additional Information Present in the QR Code -->
           <div class="mt-6 border-t border-slate-800 pt-5">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">6. Additional Information Actually Present in QR Code</h3>
+            <h3 data-i18n="infoLabel6Extra" class="text-xs font-bold uppercase tracking-wider text-slate-300">٦. زانیارییە زیادە تۆمارکراوەکانی ناو کۆدی QR</h3>
             <div id="infoExtraFields" class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2"></div>
           </div>
 
           <!-- Raw Decoded String -->
           <div class="mt-6 border-t border-slate-800 pt-5">
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Exact Raw QR Payload</span>
-            <pre id="infoRawPayload" class="font-mono-code mt-2 overflow-x-auto rounded-xl border border-slate-800 bg-[#040710] p-3.5 text-xs text-slate-300"></pre>
+            <span data-i18n="infoRawPayloadLabel" class="text-xs font-bold uppercase tracking-wider text-slate-400">دەقی ڕەسەنی ناوەڕۆکی کۆدی QR</span>
+            <pre id="infoRawPayload" dir="ltr" class="font-mono-code mt-2 overflow-x-auto rounded-xl border border-slate-800 bg-[#040710] p-3.5 text-left text-xs text-slate-300"></pre>
           </div>
 
           <!-- Required Action Controls -->
           <div class="mt-6 flex flex-wrap items-center gap-3 border-t border-slate-800 pt-5">
-            <button id="resCopyAllBtn" type="button" class="rounded-xl bg-sky-500/20 px-4 py-3 text-xs font-bold uppercase tracking-wider text-sky-300 transition hover:bg-sky-500/30">
-              COPY ALL INFORMATION
+            <button id="resCopyAllBtn" type="button" data-i18n="btnCopyAllInfo" class="rounded-xl bg-sky-500/20 px-4 py-3 text-xs font-bold uppercase tracking-wider text-sky-300 transition hover:bg-sky-500/30">
+              لەبەرگرتنەوەی هەموو زانیارییەکان
             </button>
-            <button id="resDownloadTxtBtn" type="button" class="rounded-xl border border-purple-500/40 bg-purple-500/15 px-4 py-3 text-xs font-bold uppercase tracking-wider text-purple-200 transition hover:bg-purple-500/25">
-              DOWNLOAD RESULTS (.TXT)
+            <button id="resDownloadTxtBtn" type="button" data-i18n="btnDownloadTxt" class="rounded-xl border border-purple-500/40 bg-purple-500/15 px-4 py-3 text-xs font-bold uppercase tracking-wider text-purple-200 transition hover:bg-purple-500/25">
+              داگرتنی ئەنجامەکان (.TXT)
             </button>
-            <button id="resDownloadJsonBtn" type="button" class="rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-200 transition hover:border-sky-400">
-              DOWNLOAD RESULTS (.JSON)
+            <button id="resDownloadJsonBtn" type="button" data-i18n="btnDownloadJson" class="rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-200 transition hover:border-sky-400">
+              داگرتنی ئەنجامەکان (.JSON)
             </button>
-            <button id="resScanAnotherBottomBtn" type="button" class="zip-gradient-btn ml-auto rounded-xl px-5 py-3 text-xs font-bold uppercase tracking-wider text-white">
-              SCAN ANOTHER CODE
+            <button id="resScanAnotherBottomBtn" type="button" data-i18n="btnScanAnother" class="zip-gradient-btn ms-auto rounded-xl px-5 py-3 text-xs font-bold uppercase tracking-wider text-white">
+              سکانکردنی کۆدێکی تر
             </button>
           </div>
         </div>
 
         <!-- Direct String Tester -->
         <div class="rounded-3xl border border-slate-800 zip-surface p-6">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Raw QR Payload String Tester</h3>
-          <p class="mt-1 text-xs text-slate-400">Paste any raw <code class="text-sky-300">WIFI:T:...;S:...;P:...;;</code> or <code class="text-purple-300">DPP:...;;</code> string to test special-character parsing:</p>
+          <h3 data-i18n="pasteAnotherHeading" class="text-xs font-bold uppercase tracking-wider text-slate-300">پشکنەری دەقی ناوەڕۆکی کۆدی QR</h3>
+          <p data-i18n="pasteAnotherDesc" class="mt-1 text-xs text-slate-400">هەر دەقێکی WIFI:T:...;S:...;P:...;; یان DPP:...;; لێرە بلکێنە بۆ شیکردنەوەی ڕاستەوخۆ:</p>
           <div class="mt-3 flex flex-col gap-2.5 sm:flex-row">
-            <input id="manualPayloadInput" type="text" placeholder="Paste WIFI:... or DPP:... QR payload here" class="font-mono-code flex-1 rounded-xl border border-slate-700 bg-[#040710] px-4 py-2.5 text-xs text-white focus:border-sky-400 focus:outline-none" />
-            <button id="manualDecodeBtn" type="button" class="rounded-xl border border-sky-500/40 bg-sky-500/15 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-sky-300 hover:bg-sky-500/25">
-              Decode Payload
+            <input id="manualPayloadInput" type="text" dir="ltr" data-i18n-placeholder="card3Placeholder" placeholder="دەقی WIFI:... یان DPP:... لێرە بلکێنە" class="font-mono-code flex-1 rounded-xl border border-slate-700 bg-[#040710] px-4 py-2.5 text-left text-xs text-white focus:border-sky-400 focus:outline-none" />
+            <button id="manualDecodeBtn" type="button" data-i18n="btnDecodePayload" class="rounded-xl border border-sky-500/40 bg-sky-500/15 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-sky-300 hover:bg-sky-500/25">
+              شیکردنەوەی دەق
             </button>
           </div>
         </div>
@@ -371,120 +396,184 @@
     <section id="page-history" class="hidden mx-auto max-w-4xl space-y-6">
       <div class="flex flex-col justify-between gap-4 rounded-3xl border border-slate-800 zip-surface p-6 sm:flex-row sm:items-center">
         <div>
-          <h1 class="text-2xl font-black text-white">Scan History</h1>
-          <p class="mt-1 text-xs text-slate-400">View previously scanned QR codes. Stored strictly locally on your device.</p>
+          <h1 data-i18n="historyTitle" class="text-2xl font-black text-white">مێژووی سکانکردن</h1>
+          <p data-i18n="historySubtitle" class="mt-1 text-xs text-slate-400">بینینی کۆدە سکانکراوەکانی پێشوو. بە تەواوی لەناو ئامێرەکەی خۆت پاشەکەوت دەکرێت.</p>
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
           <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-200">
             <input id="historyToggleCheckbox" type="checkbox" checked class="h-4 w-4 accent-sky-500" />
-            <span>Save Scan History</span>
+            <span data-i18n="labelSaveHistory">پاشەکەوتکردنی مێژووی سکان</span>
           </label>
-          <button id="historyClearAllBtn" type="button" class="rounded-xl border border-rose-500/40 bg-rose-500/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-rose-300 hover:bg-rose-500/25">
-            Clear All History
+          <button id="historyClearAllBtn" type="button" data-i18n="btnClearAllHistory" class="rounded-xl border border-rose-500/40 bg-rose-500/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-rose-300 hover:bg-rose-500/25">
+            سڕینەوەی هەموو مێژوو
           </button>
         </div>
       </div>
 
       <!-- In-Page Clear Confirmation Modal -->
       <div id="historyClearModal" class="hidden rounded-2xl border border-rose-500/50 bg-[#190b18] p-5 shadow-xl">
-        <h3 class="text-sm font-bold text-white">Confirm Clearing All Scan History</h3>
-        <p class="mt-1 text-xs text-slate-300">Are you sure you want to permanently delete all saved scan history entries from your browser?</p>
+        <h3 data-i18n="modalClearTitle" class="text-sm font-bold text-white">دڵنیابوونەوە لە سڕینەوەی تەواوی مێژوو</h3>
+        <p data-i18n="modalClearDesc" class="mt-1 text-xs text-slate-300">ئایا دڵنیایت کە دەتەوێت هەموو تۆمارەکانی مێژووی سکان بە هەمیشەیی لە وێبگەڕەکەت بسڕیتەوە؟</p>
         <div class="mt-4 flex items-center gap-3">
-          <button id="historyConfirmClearBtn" type="button" class="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold uppercase text-white hover:bg-rose-500">
-            Yes, Delete All
+          <button id="historyConfirmClearBtn" type="button" data-i18n="btnConfirmClear" class="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold uppercase text-white hover:bg-rose-500">
+            بەڵێ، هەمووی بسڕەوە
           </button>
-          <button id="historyCancelClearBtn" type="button" class="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300">
-            Cancel
+          <button id="historyCancelClearBtn" type="button" data-i18n="btnCancel" class="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300">
+            پاشگەزبوونەوە
           </button>
         </div>
       </div>
 
       <div>
-        <input id="historySearchInput" type="search" placeholder="Search history by network name (SSID), security protocol, or format..." class="w-full rounded-2xl border border-slate-800 zip-surface px-4 py-3 text-xs text-white focus:border-sky-400 focus:outline-none" />
+        <input id="historySearchInput" type="search" data-i18n-placeholder="historySearchPlaceholder" placeholder="گەڕان لە مێژوودا بەپێی ناوی تۆڕ (SSID)، جۆری پاراستن، یان فۆرمات..." class="w-full rounded-2xl border border-slate-800 zip-surface px-4 py-3 text-xs text-white focus:border-sky-400 focus:outline-none" />
       </div>
 
       <div id="historyListContainer" class="space-y-3"></div>
     </section>
 
-    <!-- ==================== PAGE 5: SETTINGS ==================== -->
+    <!-- ==================== PAGE 5: SETTINGS & ABOUT ==================== -->
     <section id="page-settings" class="hidden mx-auto max-w-4xl space-y-6">
       <div class="rounded-3xl border border-slate-800 zip-surface p-6">
-        <h1 class="text-2xl font-black text-white">Settings &amp; Privacy</h1>
-        <p class="mt-1 text-xs text-slate-400">Customize theme accents, password masking defaults, and local storage privacy controls.</p>
+        <h1 data-i18n="settingsTitle" class="text-2xl font-black text-white">ڕێکخستنەکان و تایبەتمەندی</h1>
+        <p data-i18n="settingsSubtitle" class="mt-1 text-xs text-slate-400">گۆڕینی زمان، ڕووکاری ڕەنگەکان، شاردنەوەی تێپەڕەوشە، و کۆنترۆڵکردنی تایبەتمەندی داتای ناوخۆیی.</p>
+      </div>
+
+      <!-- 0. Language Settings -->
+      <div class="rounded-3xl border border-slate-800 zip-surface p-6 space-y-4">
+        <h2 data-i18n="settingsLanguageHeading" class="text-sm font-bold uppercase tracking-widest text-sky-400">زمان / Language</h2>
+        <p data-i18n="settingsLanguageDesc" class="text-xs text-slate-400">زمانی پیشاندانی بەرنامەکە هەڵبژێرە (بە شێوەی خودکارانە پاشەکەوت دەکرێت).</p>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <button id="settingsLangCkbBtn" type="button" data-lang-switch="ckb" class="settings-lang-card rounded-2xl border border-sky-400 bg-sky-500/15 p-4 text-start transition">
+            <div class="text-base font-bold text-white">کوردی</div>
+            <div class="mt-1 text-xs text-slate-400">کوردیی سۆرانی (Kurdish Sorani • RTL)</div>
+          </button>
+          <button id="settingsLangEnBtn" type="button" data-lang-switch="en" dir="ltr" class="settings-lang-card rounded-2xl border border-slate-800 zip-card p-4 text-start transition">
+            <div class="text-base font-bold text-white">English</div>
+            <div class="mt-1 text-xs text-slate-400">English Interface (LTR)</div>
+          </button>
+        </div>
       </div>
 
       <!-- 1. Theme Settings -->
       <div class="rounded-3xl border border-slate-800 zip-surface p-6 space-y-4">
-        <h2 class="text-sm font-bold uppercase tracking-widest text-sky-400">Theme Settings</h2>
+        <h2 data-i18n="settingsThemeHeading" class="text-sm font-bold uppercase tracking-widest text-sky-400">ڕێکخستنی ڕووکار (Theme)</h2>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <button type="button" data-theme-choice="electric-blue" class="theme-card rounded-2xl border border-sky-400 bg-sky-500/15 p-4 text-left transition">
-            <div class="text-sm font-bold text-white">Electric Blue &amp; Purple</div>
-            <div class="mt-1 text-xs text-slate-400">Default ZIP dark neon palette</div>
+          <button type="button" data-theme-choice="electric-blue" class="theme-card rounded-2xl border border-sky-400 bg-sky-500/15 p-4 text-start transition">
+            <div data-i18n="theme1Title" class="text-sm font-bold text-white">شینی کارەبایی و مۆر</div>
+            <div data-i18n="theme1Desc" class="mt-1 text-xs text-slate-400">ڕووکاری تاریکی بنەڕەتی ZIP QR</div>
           </button>
-          <button type="button" data-theme-choice="cyber-purple" class="theme-card rounded-2xl border border-slate-800 zip-card p-4 text-left transition">
-            <div class="text-sm font-bold text-white">Cyber Violet Core</div>
-            <div class="mt-1 text-xs text-slate-400">Deep obsidian with violet accents</div>
+          <button type="button" data-theme-choice="cyber-purple" class="theme-card rounded-2xl border border-slate-800 zip-card p-4 text-start transition">
+            <div data-i18n="theme2Title" class="text-sm font-bold text-white">ڕووکاری وەنەوشەیی سایبەر</div>
+            <div data-i18n="theme2Desc" class="mt-1 text-xs text-slate-400">ڕەنگی تاریکی قووڵ لەگەڵ درەوشانەوەی وەنەوشەیی</div>
           </button>
-          <button type="button" data-theme-choice="emerald-shield" class="theme-card rounded-2xl border border-slate-800 zip-card p-4 text-left transition">
-            <div class="text-sm font-bold text-white">Emerald Security</div>
-            <div class="mt-1 text-xs text-slate-400">High-contrast tactical dark theme</div>
+          <button type="button" data-theme-choice="emerald-shield" class="theme-card rounded-2xl border border-slate-800 zip-card p-4 text-start transition">
+            <div data-i18n="theme3Title" class="text-sm font-bold text-white">قەڵغانی زومڕەدی</div>
+            <div data-i18n="theme3Desc" class="mt-1 text-xs text-slate-400">ڕووکاری تاریکی جیاوازی بەرز</div>
           </button>
         </div>
 
-        <div class="flex items-center justify-between rounded-2xl border border-slate-800 zip-card p-4">
+        <div class="flex items-center justify-between gap-4 rounded-2xl border border-slate-800 zip-card p-4">
           <div>
-            <div class="text-sm font-bold text-white">Mask Password by Default on Results Page</div>
-            <div class="text-xs text-slate-400">Start with password masked (••••••) until you tap SHOW PASSWORD</div>
+            <div data-i18n="maskPasswordTitle" class="text-sm font-bold text-white">شاردنەوەی تێپەڕەوشە بە شێوەی بنەڕەتی لە پەڕەی ئەنجامەکان</div>
+            <div data-i18n="maskPasswordDesc" class="text-xs text-slate-400">سەرەتا تێپەڕەوشەکە بە شاراوەیی (••••••) پیشان بدە تا ئەو کاتەی کرتە لە پیشاندانی تێپەڕەوشە دەکەیت</div>
           </div>
-          <input id="settingsMaskCheckbox" type="checkbox" class="h-5 w-5 accent-sky-500" />
+          <input id="settingsMaskCheckbox" type="checkbox" class="h-5 w-5 shrink-0 accent-sky-500" />
         </div>
       </div>
 
       <!-- 2. History Preferences -->
       <div class="rounded-3xl border border-slate-800 zip-surface p-6 space-y-4">
-        <h2 class="text-sm font-bold uppercase tracking-widest text-sky-400">History Preferences</h2>
-        <div class="flex items-center justify-between rounded-2xl border border-slate-800 zip-card p-4">
+        <h2 data-i18n="historyPrefsHeading" class="text-sm font-bold uppercase tracking-widest text-sky-400">ڕێکخستنەکانی مێژوو</h2>
+        <div class="flex items-center justify-between gap-4 rounded-2xl border border-slate-800 zip-card p-4">
           <div>
-            <div class="text-sm font-bold text-white">Enable Local Scan History</div>
-            <div class="text-xs text-slate-400">Automatically save decoded QR codes in your browser&apos;s local storage</div>
+            <div data-i18n="enableHistoryTitle" class="text-sm font-bold text-white">چالاککردنی مێژووی سکانی ناوخۆیی</div>
+            <div data-i18n="enableHistoryDesc" class="text-xs text-slate-400">پاشەکەوتکردنی خودکارانەی کۆدە شیکراوەکانی QR لە بیرگەی ناوخۆیی وێبگەڕەکەت</div>
           </div>
-          <input id="settingsHistoryCheckbox" type="checkbox" checked class="h-5 w-5 accent-sky-500" />
+          <input id="settingsHistoryCheckbox" type="checkbox" checked class="h-5 w-5 shrink-0 accent-sky-500" />
         </div>
       </div>
 
       <!-- 3. Privacy Information & Clear Stored Data -->
       <div class="rounded-3xl border border-slate-800 zip-surface p-6 space-y-4">
-        <h2 class="text-sm font-bold uppercase tracking-widest text-sky-400">Privacy Information &amp; Data Control</h2>
+        <h2 data-i18n="privacyHeading" class="text-sm font-bold uppercase tracking-widest text-sky-400">زانیاری تایبەتمەندی و کۆنترۆڵی داتا</h2>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 text-xs text-slate-300">
           <div class="rounded-2xl border border-slate-800 zip-card p-4">
-            <div class="font-bold text-white">100% Client-Side Execution</div>
-            <p class="mt-1 text-slate-400">Camera streams and uploaded QR images are decoded entirely inside your browser. Passwords are never transmitted to any external server or analytics service.</p>
+            <div data-i18n="privacyCard1Title" class="font-bold text-white">١٠٠٪ کارکردن لەسەر ئامێری بەکارهێنەر</div>
+            <p data-i18n="privacyCard1Desc" class="mt-1 text-slate-400">پەخشی کامێرا و وێنە بارکراوەکانی QR بە تەواوی لەناو وێبگەڕەکەت شیدەکرێنەوە. تێپەڕەوشەکان هەرگیز بۆ هیچ سێرڤەر یان خزمەتگوزارییەکی دەرەکی نانێردرێن.</p>
           </div>
           <div class="rounded-2xl border border-slate-800 zip-card p-4">
-            <div class="font-bold text-white">Untrusted Input &amp; Export Safety</div>
-            <p class="mt-1 text-slate-400">Scanned URLs are never opened automatically, and exported files use neutral timestamped filenames so credentials never leak in file names.</p>
+            <div data-i18n="privacyCard2Title" class="font-bold text-white">پاراستنی داتای دەرەکی و داگرتنی سەلامەت</div>
+            <p data-i18n="privacyCard2Desc" class="mt-1 text-slate-400">بەستەرە سکانکراوەکان بە شێوەی خودکارانە ناکرێنەوە، و فایلە داگیراوەکان ناوی بێلایەنی کاتدار بەکاردەهێنن بۆ ئەوەی زانیارییە نهێنییەکان لە ناوی فایلدا دەرنەکەون.</p>
           </div>
         </div>
 
         <div>
-          <button id="settingsWipeDataBtn" type="button" class="rounded-xl border border-rose-500/40 bg-rose-500/15 px-5 py-3 text-xs font-bold uppercase tracking-wider text-rose-300 hover:bg-rose-500/25">
-            Clear All Stored Data (History &amp; Preferences)
+          <button id="settingsWipeDataBtn" type="button" data-i18n="btnClearAllStoredData" class="rounded-xl border border-rose-500/40 bg-rose-500/15 px-5 py-3 text-xs font-bold uppercase tracking-wider text-rose-300 hover:bg-rose-500/25">
+            سڕینەوەی هەموو داتا پاشەکەوتکراوەکان (مێژوو و ڕێکخستنەکان)
           </button>
           <div id="settingsWipeConfirmBox" class="hidden mt-3 flex flex-wrap items-center gap-3 rounded-2xl border border-rose-500/40 bg-rose-950/30 p-4">
-            <span class="text-xs font-semibold text-rose-200">Confirm wiping all saved history and resetting settings?</span>
-            <button id="settingsConfirmWipeBtn" type="button" class="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold uppercase text-white">Confirm Wipe</button>
-            <button id="settingsCancelWipeBtn" type="button" class="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300">Cancel</button>
+            <span data-i18n="confirmWipePrompt" class="text-xs font-semibold text-rose-200">دڵنیایت لە سڕینەوەی هەموو مێژوو و گەڕاندنەوەی ڕێکخستنەکان بۆ دۆخی بنەڕەتی؟</span>
+            <button id="settingsConfirmWipeBtn" type="button" data-i18n="btnConfirmWipe" class="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold uppercase text-white">تەواو، هەمووی بسڕەوە</button>
+            <button id="settingsCancelWipeBtn" type="button" data-i18n="btnCancel" class="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300">پاشگەزبوونەوە</button>
           </div>
         </div>
       </div>
 
-      <!-- 4. About ZIP -->
-      <div class="rounded-3xl border border-slate-800 zip-surface p-6">
-        <h2 class="text-sm font-bold uppercase tracking-widest text-sky-400">About ZIP WiFi QR Decoder</h2>
-        <p class="mt-2 text-xs leading-relaxed text-slate-300">
-          <strong>ZIP WiFi QR Decoder (v2.4.0 PWA)</strong> — <span class="font-mono-code text-sky-300">SCAN. REVEAL. CONNECT.</span> Designed for iPhones, iPads, Android phones &amp; tablets, Windows, MacBooks, and Linux computers. Supports WPA, WPA2, WPA3-SAE, WPA2-EAP, WEP, Open (<code class="text-sky-300">nopass</code>), hidden networks, escaped special characters (<code class="text-sky-300">\; \, \: \\ \"</code>), and Wi-Fi Easy Connect (<code class="text-purple-300">DPP:</code>).
-        </p>
+      <!-- 4. About ZIP QR & Developer / Creator Identity Section -->
+      <div id="aboutSectionCard" class="rounded-3xl border border-slate-800 zip-surface p-6 space-y-6">
+        <div>
+          <h2 data-i18n="aboutHeading" class="text-sm font-bold uppercase tracking-widest text-sky-400">دەربارەی ZIP QR — Wi-Fi QR Decoder</h2>
+          <p data-i18n="aboutDescription" class="mt-2 text-xs leading-relaxed text-slate-300">
+            ZIP QR — Wi-Fi QR Decoder (وەشانی PWA) — SCAN. REVEAL. CONNECT. دیزاین کراوە بۆ ئایفۆن، ئایپاد، مۆبایل و تابلێتەکانی ئەندرۆید، ویندۆز، ماکبووک، و کۆمپیوتەرەکانی لینوکس. پشتگیری لە تۆڕەکانی WPA، WPA2، WPA3-SAE، WPA2-EAP، WEP، تۆڕە کراوەکان (nopass)، تۆڕە شاراوەکان، هێما تایبەتەکان (\; \, \: \\ \")، و کۆدەکانی Wi-Fi Easy Connect (DPP:) دەکات.
+          </p>
+        </div>
+
+        <!-- Professional Creator / Developer Card -->
+        <div id="creatorIdentityCard" class="relative overflow-hidden rounded-2xl border border-sky-500/40 bg-gradient-to-br from-[#0c1428] via-[#090d1a] to-[#140c29] p-5 shadow-xl sm:p-6">
+          <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <div class="space-y-2">
+              <span data-i18n="creatorSectionBadge" class="inline-block rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider text-sky-300">
+                زانیاری گەشەپێدەر و دروستکەر
+              </span>
+              <h3 id="creatorNameHeading" data-i18n="creatorNameValue" class="text-xl font-black text-white">زەردەشت محمد (Zardasht Muhammad)</h3>
+              <p id="creatorTitleText" data-i18n="creatorTitleValue" class="text-xs font-bold uppercase tracking-wider text-purple-300">
+                گەشەپێدەر و دروستکەر (Developer &amp; Creator)
+              </p>
+              <p id="creatorCreditStatement" data-i18n="creatorCreditLine" class="text-sm font-semibold text-slate-200">
+                دروستکراو و پەرەپێدراوە لەلایەن زەردەشت محمد.
+              </p>
+            </div>
+
+            <div class="flex flex-col items-start gap-2.5 sm:items-end">
+              <a id="creatorEmailBtn" href="mailto:zardashtmuhammad12@gmail.com" class="zip-gradient-btn inline-flex items-center gap-2 rounded-xl px-5 py-3 text-xs font-black uppercase tracking-wider text-white transition hover:brightness-110">
+                <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="4" width="20" height="16" rx="2"/>
+                  <path d="M22 7l-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                </svg>
+                <span data-i18n="creatorContactBtn">پەیوەندیکردن بە ئیمەیڵ</span>
+              </a>
+              <a id="creatorEmailAddressLink" href="mailto:zardashtmuhammad12@gmail.com" dir="ltr" class="font-mono-code text-xs text-sky-300 hover:underline">
+                zardashtmuhammad12@gmail.com
+              </a>
+            </div>
+          </div>
+
+          <div class="mt-5 grid grid-cols-1 gap-3 border-t border-slate-800/90 pt-4 sm:grid-cols-3 text-xs">
+            <div class="rounded-xl border border-slate-800 bg-[#050811]/80 p-3">
+              <span data-i18n="creatorNameLabel" class="text-[11px] text-slate-400">ناو</span>
+              <p data-i18n="creatorNameValue" class="mt-0.5 font-bold text-white">زەردەشت محمد (Zardasht Muhammad)</p>
+            </div>
+            <div class="rounded-xl border border-slate-800 bg-[#050811]/80 p-3">
+              <span data-i18n="creatorTitleLabel" class="text-[11px] text-slate-400">ناونیشانی پیشەیی</span>
+              <p data-i18n="creatorTitleValue" class="mt-0.5 font-bold text-white">گەشەپێدەر و دروستکەر (Developer &amp; Creator)</p>
+            </div>
+            <div class="rounded-xl border border-slate-800 bg-[#050811]/80 p-3">
+              <span data-i18n="creatorProjectLabel" class="text-[11px] text-slate-400">پڕۆژە</span>
+              <p dir="ltr" class="mt-0.5 font-bold text-sky-300">ZIP QR — Wi-Fi QR Decoder</p>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -493,7 +582,7 @@
   <!-- FOOTER -->
   <footer class="border-t border-slate-800/80 bg-[#04060d] py-5 text-center text-xs text-slate-400">
     <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 sm:flex-row sm:px-6">
-      <span class="font-bold text-slate-300">ZIP WiFi QR Decoder — SCAN. REVEAL. CONNECT.</span>
-      <span>100% Local In-Browser QR Decoding • Zero Cloud Uploads</span>
+      <span id="footerLeftText" dir="ltr" class="font-bold text-slate-300">ZIP QR — Wi-Fi QR Decoder • SCAN. REVEAL. CONNECT.</span>
+      <span id="footerRightText" data-i18n="footerRight">١٠٠٪ شیکردنەوەی ناوخۆیی کۆدی QR لەناو وێبگەڕ • بێ ناردن بۆ هەور (Cloud)</span>
     </div>
   </footer>

@@ -8,6 +8,7 @@ import { ScannerPage } from './pages/ScannerPage';
 import { ResultsPage } from './pages/ResultsPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { DEFAULT_LANGUAGE, SupportedLanguage, TRANSLATIONS } from './i18n/translations';
 
 export default function App() {
   const [activePage, setActivePage] = useState<ActivePage>('home');
@@ -20,6 +21,16 @@ export default function App() {
     type: 'success' | 'info' | 'error';
   } | null>(null);
 
+  const language: SupportedLanguage = settings.language || DEFAULT_LANGUAGE;
+  const t = TRANSLATIONS[language];
+
+  useEffect(() => {
+    const isRtl = language === 'ckb';
+    document.documentElement.setAttribute('lang', language);
+    document.documentElement.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
+    document.title = 'ZIP QR — Wi-Fi QR Decoder';
+  }, [language]);
+
   const showNotification = (
     message: string,
     type: 'success' | 'info' | 'error' = 'info'
@@ -29,8 +40,8 @@ export default function App() {
 
   useEffect(() => {
     if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 3200);
-    return () => window.clearTimeout(t);
+    const timer = window.setTimeout(() => setToast(null), 3200);
+    return () => window.clearTimeout(timer);
   }, [toast]);
 
   const handleDecodedPayload = (rawPayload: string, sourceLabel = 'QR Scan') => {
@@ -45,9 +56,9 @@ export default function App() {
 
     setActivePage('results');
     if (parsed.hasPasswordField && parsed.password !== null) {
-      showNotification(`Decoded Wi-Fi network "${parsed.ssid}" and extracted password!`, 'success');
+      showNotification(`${t.toastPasswordExtracted} "${parsed.ssid}"!`, 'success');
     } else {
-      showNotification(`Decoded QR payload (${parsed.formatLabel})`, 'info');
+      showNotification(`${t.toastDecodedPayload} (${parsed.formatLabel})`, 'info');
     }
   };
 
@@ -56,16 +67,21 @@ export default function App() {
     setSettings(updated);
   };
 
+  const handleLanguageChange = (newLang: SupportedLanguage) => {
+    handleUpdateSettings({ language: newLang });
+    showNotification(TRANSLATIONS[newLang].toastLanguageChanged, 'info');
+  };
+
   const handleDeleteHistoryEntry = (id: string) => {
     const updated = storageService.deleteHistoryEntry(id);
     setHistory(updated);
-    showNotification('Removed scan entry from local history.', 'info');
+    showNotification(t.toastEntryDeleted, 'info');
   };
 
   const handleClearAllHistory = () => {
     storageService.clearHistory();
     setHistory([]);
-    showNotification('Cleared all local scan history.', 'info');
+    showNotification(t.toastHistoryCleared, 'info');
   };
 
   const handleClearAllStoredData = () => {
@@ -73,19 +89,24 @@ export default function App() {
     setSettings(reset);
     setHistory([]);
     setCurrentResult(null);
-    showNotification('All stored history and settings have been wiped from local storage.', 'info');
+    showNotification(t.toastDataWiped, 'info');
   };
 
   return (
-    <div className="min-h-screen bg-[#050811] text-slate-100 flex flex-col font-sans selection:bg-sky-500 selection:text-white">
+    <div
+      dir={language === 'ckb' ? 'rtl' : 'ltr'}
+      className="min-h-screen bg-[#050811] text-slate-100 flex flex-col font-sans selection:bg-sky-500 selection:text-white"
+    >
       <Header
         activePage={activePage}
         onNavigate={setActivePage}
         historyCount={history.length}
+        language={language}
+        onLanguageChange={handleLanguageChange}
       />
 
       {toast && (
-        <div className="fixed bottom-5 right-5 z-50 max-w-sm rounded-2xl border border-sky-500/40 bg-[#0c1428]/95 px-4 py-3 text-xs font-semibold text-white shadow-2xl backdrop-blur-md">
+        <div className="fixed bottom-5 end-5 z-50 max-w-sm rounded-2xl border border-sky-500/40 bg-[#0c1428]/95 px-4 py-3 text-xs font-semibold text-white shadow-2xl backdrop-blur-md">
           {toast.message}
         </div>
       )}
@@ -93,6 +114,7 @@ export default function App() {
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
         {activePage === 'home' && (
           <Home
+            language={language}
             onNavigate={setActivePage}
             onDecodedPayload={handleDecodedPayload}
             onSelectHistoryResult={(res) => {
@@ -108,6 +130,7 @@ export default function App() {
         {activePage === 'scanner' && (
           <ScannerPage
             preferredCameraId={settings.preferredCameraId}
+            language={language}
             onDetected={handleDecodedPayload}
             onCancel={() => setActivePage('home')}
             onCameraChange={(deviceId) => handleUpdateSettings({ preferredCameraId: deviceId })}
@@ -119,6 +142,7 @@ export default function App() {
             result={currentResult}
             sourceLabel={currentSourceLabel}
             autoMaskPassword={settings.autoMaskPassword}
+            language={language}
             onScanAnother={() => setActivePage('scanner')}
             onDecodedPayload={handleDecodedPayload}
             onNotify={showNotification}
@@ -129,6 +153,7 @@ export default function App() {
           <HistoryPage
             history={history}
             historyEnabled={settings.historyEnabled}
+            language={language}
             onToggleHistoryEnabled={(enabled) => handleUpdateSettings({ historyEnabled: enabled })}
             onSelectResult={(res) => {
               setCurrentResult(res);
@@ -145,6 +170,7 @@ export default function App() {
           <SettingsPage
             settings={settings}
             historyCount={history.length}
+            language={language}
             onUpdateSettings={handleUpdateSettings}
             onClearAllStoredData={handleClearAllStoredData}
             onNotify={showNotification}
@@ -154,10 +180,10 @@ export default function App() {
 
       <footer className="border-t border-slate-800/80 bg-[#04060d] py-5 text-center text-xs text-slate-400">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 sm:flex-row sm:px-6">
-          <span className="font-semibold text-slate-300">
-            ZIP WiFi QR Decoder — SCAN. REVEAL. CONNECT.
+          <span className="font-semibold text-slate-300" dir="ltr">
+            {t.footerLeft}
           </span>
-          <span>100% Client-Side Processing • Offline-Ready PWA • Zero Telemetry</span>
+          <span>{t.footerRight}</span>
         </div>
       </footer>
     </div>

@@ -1,18 +1,18 @@
 /**
- * ZIP WiFi QR Decoder — Privacy-First Local Storage Service
+ * ZIP QR — Wi-Fi QR Decoder — Privacy-First Local Storage Service
  *
- * Manages optional local scan history and application preferences.
- * - All operations are wrapped in `try/catch` for sandboxed iframe and private-browsing safety.
- * - Passwords and scan records never leave the user's device.
- * - When history is disabled (`historyEnabled: false`), new scans are never persisted.
+ * Manages optional local scan history, language preference (defaulting to 'ckb' Kurdish Sorani),
+ * and application preferences.
  */
 
 import { AppSettings, ParsedQRResult, ScanHistoryEntry } from '../types';
+import { DEFAULT_LANGUAGE, LANGUAGE_STORAGE_KEY, SupportedLanguage } from '../i18n/translations';
 
 const HISTORY_STORAGE_KEY = 'zip_wifi_qr_history_v1';
 const SETTINGS_STORAGE_KEY = 'zip_wifi_qr_settings_v1';
 
 const DEFAULT_SETTINGS: AppSettings = {
+  language: DEFAULT_LANGUAGE,
   historyEnabled: true,
   autoMaskPassword: false,
   accentTheme: 'electric-blue',
@@ -25,16 +25,30 @@ let memorySettingsFallback: AppSettings = { ...DEFAULT_SETTINGS };
 
 export class StorageService {
   /**
-   * Loads user preferences from localStorage with safe fallback
+   * Loads user preferences from localStorage with safe fallback.
+   * Defaults `language` to Kurdish Sorani (`ckb`) for first-time visitors.
    */
   public getSettings(): AppSettings {
     try {
       const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-      if (!raw) return { ...memorySettingsFallback };
+      const savedLang = localStorage.getItem(LANGUAGE_STORAGE_KEY) as SupportedLanguage | null;
+      if (!raw) {
+        return {
+          ...memorySettingsFallback,
+          language: savedLang === 'en' || savedLang === 'ckb' ? savedLang : memorySettingsFallback.language,
+        };
+      }
       const parsed = JSON.parse(raw) as Partial<AppSettings>;
+      const resolvedLang: SupportedLanguage =
+        parsed.language === 'en' || parsed.language === 'ckb'
+          ? parsed.language
+          : savedLang === 'en' || savedLang === 'ckb'
+          ? savedLang
+          : DEFAULT_LANGUAGE;
       return {
         ...DEFAULT_SETTINGS,
         ...parsed,
+        language: resolvedLang,
       };
     } catch {
       return { ...memorySettingsFallback };
@@ -42,7 +56,7 @@ export class StorageService {
   }
 
   /**
-   * Saves updated user preferences
+   * Saves updated user preferences and persists language selection
    */
   public saveSettings(next: Partial<AppSettings>): AppSettings {
     const current = this.getSettings();
@@ -50,6 +64,9 @@ export class StorageService {
     memorySettingsFallback = updated;
     try {
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(updated));
+      if (updated.language) {
+        localStorage.setItem(LANGUAGE_STORAGE_KEY, updated.language);
+      }
     } catch {
       // Sandboxed iframe fallback
     }
@@ -90,7 +107,6 @@ export class StorageService {
       result,
     };
 
-    // Deduplicate identical consecutive rawPayload or prepend up to 50 entries
     const filtered = existing.filter((item) => item.id !== entry.id && item.result.rawPayload !== result.rawPayload);
     const updated = [entry, ...filtered].slice(0, 50);
     memoryHistoryFallback = updated;
@@ -134,15 +150,16 @@ export class StorageService {
    * Wipes all stored data (both history and settings) and resets to defaults
    */
   public clearAllStoredData(): AppSettings {
+    const currentLang = this.getSettings().language;
     memoryHistoryFallback = [];
-    memorySettingsFallback = { ...DEFAULT_SETTINGS };
+    memorySettingsFallback = { ...DEFAULT_SETTINGS, language: currentLang };
     try {
       localStorage.removeItem(HISTORY_STORAGE_KEY);
       localStorage.removeItem(SETTINGS_STORAGE_KEY);
     } catch {
       // Sandboxed iframe fallback
     }
-    return { ...DEFAULT_SETTINGS };
+    return { ...memorySettingsFallback };
   }
 }
 

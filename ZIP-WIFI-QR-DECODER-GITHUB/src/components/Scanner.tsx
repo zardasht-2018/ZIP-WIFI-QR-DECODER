@@ -2,9 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { cameraService, CameraDeviceOption } from '../services/cameraService';
 import { decodeQRFromSource } from '../services/qrDecoder';
 import { UploadButton } from './UploadButton';
+import { SupportedLanguage, TRANSLATIONS } from '../i18n/translations';
 
 interface ScannerProps {
   preferredCameraId?: string;
+  language?: SupportedLanguage;
   onDetected: (rawPayload: string, sourceLabel?: string) => void;
   onCancel: () => void;
   onCameraChange?: (deviceId: string) => void;
@@ -12,10 +14,12 @@ interface ScannerProps {
 
 export const Scanner: React.FC<ScannerProps> = ({
   preferredCameraId,
+  language = 'ckb',
   onDetected,
   onCancel,
   onCameraChange,
 }) => {
+  const t = TRANSLATIONS[language];
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scanTimerRef = useRef<number | null>(null);
 
@@ -60,13 +64,9 @@ export const Scanner: React.FC<ScannerProps> = ({
           onDetected(decoded, 'Live Camera Scan');
         }
       }, 220);
-    } catch (err) {
+    } catch {
       setIsInitializing(false);
-      setCameraError(
-        err instanceof Error
-          ? err.message
-          : 'Camera access is unavailable on this device or browser. Please upload a QR image below.'
-      );
+      setCameraError(t.scannerFallbackDenied);
     }
   };
 
@@ -105,7 +105,7 @@ export const Scanner: React.FC<ScannerProps> = ({
                 <div className="absolute inset-x-2 top-1/2 h-0.5 -translate-y-1/2 bg-gradient-to-r from-transparent via-sky-400 to-transparent shadow-[0_0_12px_#38bdf8] animate-pulse" />
               </div>
               <p className="mt-4 rounded-full bg-black/70 px-4 py-1.5 text-xs font-semibold text-sky-300 backdrop-blur-md">
-                {isInitializing ? 'Opening camera stream...' : 'Align Wi-Fi QR code within the scanning frame'}
+                {isInitializing ? t.scannerOpeningStream : t.scannerAlignPrompt}
               </p>
             </div>
           )}
@@ -115,14 +115,14 @@ export const Scanner: React.FC<ScannerProps> = ({
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-400">
                 <span className="text-xl font-bold">!</span>
               </div>
-              <h3 className="text-base font-bold text-white">Camera Unavailable — Image Upload Ready</h3>
+              <h3 className="text-base font-bold text-white">{t.scannerFallbackTitle}</h3>
               <p className="mt-2 text-xs leading-relaxed text-slate-300">{cameraError}</p>
               <button
                 type="button"
                 onClick={() => void startLiveScanner(activeDeviceId)}
                 className="mt-4 rounded-xl border border-sky-500/40 bg-sky-500/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-sky-300 hover:bg-sky-500/25"
               >
-                Retry Camera Permission
+                {t.btnRetryCamera}
               </button>
             </div>
           )}
@@ -157,7 +157,11 @@ export const Scanner: React.FC<ScannerProps> = ({
                   : 'cursor-not-allowed border-slate-800 bg-slate-900/50 text-slate-600'
               }`}
             >
-              {torchSupported ? (torchActive ? 'Flashlight: ON' : 'Flashlight: OFF') : 'Flashlight N/A'}
+              {torchSupported
+                ? torchActive
+                  ? t.flashlightOn
+                  : t.flashlightOff
+                : t.flashlightNA}
             </button>
           </div>
 
@@ -169,14 +173,15 @@ export const Scanner: React.FC<ScannerProps> = ({
             }}
             className="rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-300 hover:bg-slate-700 hover:text-white"
           >
-            Cancel
+            {t.btnCancel}
           </button>
         </div>
       </div>
 
       <UploadButton
         variant="dropzone"
-        label="Select QR Image from Gallery / Desktop"
+        language={language}
+        label={t.btnUploadFromGallery}
         onDecodedPayload={(payload, label) => {
           stopScanLoop();
           onDetected(payload, label);

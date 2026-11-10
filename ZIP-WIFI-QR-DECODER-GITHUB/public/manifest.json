@@ -1,7 +1,7 @@
 {
-  "name": "ZIP WiFi QR Decoder",
-  "short_name": "ZIP WiFi QR",
-  "description": "SCAN. REVEAL. CONNECT. 100% local in-browser Wi-Fi QR decoder and password extractor.",
+  "name": "ZIP QR — Wi-Fi QR Decoder",
+  "short_name": "ZIP QR",
+  "description": "ZIP QR — Wi-Fi QR Decoder. SCAN. REVEAL. CONNECT. 100% local in-browser Wi-Fi QR decoder and password extractor.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#050811",
