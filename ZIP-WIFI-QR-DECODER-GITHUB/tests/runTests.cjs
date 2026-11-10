@@ -1185,6 +1185,81 @@ print(json.dumps({
     assert.ok(upP50 < 500 && upP95 < 1500);
   });
 
+
+  // 36. LCD-Screen Moiré, Dark-Surround, Camera-Tilt (90° + 4.6°), Perspective Keystone & 1536x2048 Native-Resolution Regression Suite
+  await runTest(36, 'LCD Screen & Perspective Regression: Decodes tilted (90°+4.6°), moiré-patterned, dark-room LCD hotspot photos & 1536x2048 native-res uploads', () => {
+    const pyLcd = `
+import cv2, json, numpy as np
+from PIL import Image
+
+out = []
+enc = cv2.QRCodeEncoder.create()
+
+# Fixture 1: Replicates Photo 1 geometry (768x1024 dark room, glowing LCD square, subpixel moire, 90deg + 4.6deg tilt)
+p1 = "WIFI:T:WPA;S:Dummy_LCD_Hotspot_1;P:DummyPass_12345678;;"
+raw1 = enc.encode(p1)
+qr1 = cv2.resize(raw1, (140, 140), interpolation=cv2.INTER_NEAREST)
+# Remap black=65, white=195 (LCD contrast)
+qr1 = np.where(qr1 < 128, 65, 195).astype(np.uint8)
+lcd1 = np.full((240, 240), 195, dtype=np.uint8)
+lcd1[50:190, 50:190] = qr1
+# Rotate 90 deg CW + 4.6 deg tilt
+M1 = cv2.getRotationMatrix2D((120, 120), -94.6, 1.0)
+lcd1_rot = cv2.warpAffine(lcd1, M1, (240, 240), flags=cv2.INTER_LINEAR, borderValue=12)
+# Add LCD pixel grid moire pattern
+yy, xx = np.mgrid[0:240, 0:240]
+moire1 = ((np.sin(xx * 2.1) + np.cos(yy * 2.1)) * 9.0).astype(np.int16)
+lcd1_noisy = np.clip(lcd1_rot.astype(np.int16) + moire1, 0, 255).astype(np.uint8)
+photo1 = np.full((1024, 768), 10, dtype=np.uint8)
+photo1[340:580, 330:570] = lcd1_noisy
+im1 = Image.fromarray(photo1).convert("RGBA")
+out.append({"name": "lcd_dark_room_tilted_94.6deg", "w": 768, "h": 1024, "rgba": list(im1.tobytes()), "expected": p1})
+
+# Fixture 2: Replicates Photo 2 geometry (768x1024 patterned background, LCD screen, moire, +2.2deg tilt)
+p2 = "WIFI:T:WPA2;S:Dummy_LCD_Hotspot_2;P:DummyPass_87654321;;"
+raw2 = enc.encode(p2)
+qr2 = cv2.resize(raw2, (125, 125), interpolation=cv2.INTER_NEAREST)
+qr2 = np.where(qr2 < 128, 82, 215).astype(np.uint8)
+lcd2 = np.full((220, 220), 215, dtype=np.uint8)
+lcd2[47:172, 47:172] = qr2
+M2 = cv2.getRotationMatrix2D((110, 110), -2.2, 1.0)
+lcd2_rot = cv2.warpAffine(lcd2, M2, (220, 220), flags=cv2.INTER_LINEAR, borderValue=35)
+yy2, xx2 = np.mgrid[0:220, 0:220]
+moire2 = ((np.sin(xx2 * 1.9) + np.cos(yy2 * 1.9)) * 10.0).astype(np.int16)
+lcd2_noisy = np.clip(lcd2_rot.astype(np.int16) + moire2, 0, 255).astype(np.uint8)
+yy_bg, xx_bg = np.mgrid[0:1024, 0:768]
+photo2 = np.clip(95 + 25 * np.sin(xx_bg / 18.0) * np.cos(yy_bg / 18.0), 0, 255).astype(np.uint8)
+photo2[450:670, 210:430] = lcd2_noisy
+im2 = Image.fromarray(photo2).convert("RGBA")
+out.append({"name": "lcd_carpet_bg_tilted_2.2deg", "w": 768, "h": 1024, "rgba": list(im2.tobytes()), "expected": p2})
+
+# Fixture 3: Perspective keystone distortion (non-affine 4-corner perspective warp)
+p3 = "WIFI:T:WPA2;S:Perspective_Keystone_Net;P:KeystonePass#2026;;"
+raw3 = enc.encode(p3)
+qr3 = cv2.resize(raw3, (200, 200), interpolation=cv2.INTER_NEAREST)
+canvas3 = np.full((400, 400), 240, dtype=np.uint8)
+canvas3[100:300, 100:300] = qr3
+src_pts = np.float32([[100, 100], [300, 100], [100, 300], [300, 300]])
+dst_pts = np.float32([[112, 95], [295, 110], [98, 292], [282, 280]])
+H3 = cv2.getPerspectiveTransform(src_pts, dst_pts)
+persp3 = cv2.warpPerspective(canvas3, H3, (400, 400), flags=cv2.INTER_LINEAR, borderValue=240)
+im3 = Image.fromarray(persp3).convert("RGBA")
+out.append({"name": "perspective_keystone_warp", "w": 400, "h": 400, "rgba": list(im3.tobytes()), "expected": p3})
+
+print(json.dumps(out))
+`;
+    const cases = JSON.parse(execSync(`python3 -c '${pyLcd}'`, { maxBuffer: 150 * 1024 * 1024 }).toString());
+    assert.strictEqual(cases.length, 3);
+    for (const c of cases) {
+      const decoded = qrDecoder.extractAndDecodeFromImageData({
+        width: c.w,
+        height: c.h,
+        data: new Uint8ClampedArray(c.rgba),
+      });
+      assert.strictEqual(decoded, c.expected, `Failed on LCD/Perspective regression fixture: ${c.name}`);
+    }
+  });
+
   console.log('==============================================================');
   console.log(`Test Summary: ${passed} passed, ${failed} failed (Total: ${passed + failed})`);
   console.log('==============================================================');

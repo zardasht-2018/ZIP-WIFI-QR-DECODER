@@ -225,6 +225,11 @@ export interface TranslationDictionary {
   toastTorchUnsupported: string;
   toastMultipleQrFound: string;
   toastOfflineReadyConfirmed: string;
+  stageReadingOriginal: string;
+  stageDetectingRegions: string;
+  stageCorrectingPerspective: string;
+  stageImprovingQuality: string;
+  stageAlternativeDecoders: string;
 }
 
 export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
@@ -474,6 +479,11 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     toastTorchUnsupported: 'کۆنترۆڵکردنی فلاش لەسەر ئەم کامێرایە پشتگیری ناکرێت.',
     toastMultipleQrFound: 'چەند کۆدێکی QR لە وێنەکەدا دۆزرایەوە — دانەیەکیان هەڵبژێرە.',
     toastOfflineReadyConfirmed: 'هەموو فایلە پێویستەکان پاشەکەوت کران — ئامادەیە بۆ کارکردن بەبێ ئینتەرنێت.',
+    stageReadingOriginal: 'خوێندنەوەی وێنەی ڕەسەن بە کوالێتی تەواو...',
+    stageDetectingRegions: 'دیاریکردنی ناوچەکانی کۆدی QR...',
+    stageCorrectingPerspective: 'ڕاستکردنەوەی گۆشە و لاری وێنەکە...',
+    stageImprovingQuality: 'باشترکردنی کوالێتی و لابردنی تەشویشی شاشە...',
+    stageAlternativeDecoders: 'تاقیکردنەوەی شیکەرەوە جێگرەوەکان...',
   },
 
   en: {
@@ -723,5 +733,10 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     toastTorchUnsupported: 'Flashlight control not supported on this camera.',
     toastMultipleQrFound: 'Multiple QR codes detected in image — select one below.',
     toastOfflineReadyConfirmed: 'All essential app files cached — ready for offline use!',
+    stageReadingOriginal: 'Reading original image at full resolution...',
+    stageDetectingRegions: 'Detecting QR regions...',
+    stageCorrectingPerspective: 'Correcting perspective & camera angle...',
+    stageImprovingQuality: 'Improving image quality & screen de-moiré...',
+    stageAlternativeDecoders: 'Trying alternative decoders...',
   },
 };

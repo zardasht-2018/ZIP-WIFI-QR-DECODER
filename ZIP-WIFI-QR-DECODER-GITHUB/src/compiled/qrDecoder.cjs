@@ -11,23 +11,30 @@ exports.decodeQRModuleMatrix = decodeQRModuleMatrix;
 exports.extractAllQRCodesFromImageData = extractAllQRCodesFromImageData;
 exports.extractAndDecodeFromImageData = extractAndDecodeFromImageData;
 /**
- * ZIP QR — Wi-Fi QR Decoder — Advanced Multi-Stage Local QR Code Recognition Engine (v4.0)
+ * ZIP QR — Wi-Fi QR Decoder — Advanced Screen-Aware & Perspective-Rectifying QR Recognition Engine (v5.0)
  *
  * Performs 100% client-side QR code decoding from:
- * 1. Live camera `<video>` frames (via `requestVideoFrameCallback` + ROI cropping + non-blocking lock)
- * 2. Uploaded PNG, JPG/JPEG, and WEBP image files (including multi-QR detection inside one image)
+ * 1. Uploaded photographs at FULL NATIVE RESOLUTION first (handling LCD/OLED screens, moiré patterns,
+ *    uneven backlight, dark surroundings, camera tilt, and perspective distortion)
+ * 2. Live camera `<video>` frames (via `requestVideoFrameCallback` + ROI cropping + non-blocking lock)
  * 3. Canvas `ImageData` buffers
  *
- * Progressive Multi-Stage Recognition Pipeline (Fastest & Least Destructive First):
- * - Stage 0: Native `BarcodeDetector` API (hardware-accelerated when supported on Chrome/Edge/Android/macOS)
- * - Stage 1: `jsQR` (with `inversionAttempts: 'attemptBoth'`)
- * - Stage 2: Fast Global Mid-Luminance Threshold + Tight Bounding-Box Grid Sampling + 4-Orientation Matrix Rotation
- * - Stage 3: Inverted Global Polarity Recovery (light QR on dark background)
- * - Stage 4: Percentile Histogram Contrast Stretch (1st–99th percentile normalization) + 3x3 Unsharp/Laplacian Sharpening
- *            for low-contrast or blurry QR images
- * - Stage 5: Multi-Threshold Integral-Image Adaptive Binarization (`binarizeAdaptive` with multiple bias levels) +
- *            1:1:3:1:1 Finder Pattern Triad Localization (`locateFinderBoundingBox`) +
- *            Exact Reed-Solomon GF(256) Berlekamp-Massey / Chien / Forney Error Correction
+ * Multi-Stage Progressive Recognition Pipeline:
+ * - Stage 1 (Original Image & Fast Global/Otsu Pass):
+ *     Attempts native `BarcodeDetector`, `jsQR` (if present), and fast global threshold at original resolution.
+ * - Stage 2 (De-Moiré Smoothing & Multi-Scale Integral Adaptive Normalization):
+ *     Applies separable 3x3 Gaussian de-moiré smoothing (`[1,2,1]/4`) to suppress LCD subpixel grids
+ *     without blurring module boundaries, followed by module-scale Bradley-Roth integral adaptive thresholding.
+ * - Stage 3 (2D Finder Triad Localization, Sub-Module Majority Affine Sampling & 8-DOF Perspective Homography):
+ *     Locates 1:1:3:1:1 finder centers in 2D (horizontal + vertical + diagonal verification) with weighted
+ *     subpixel centroid refinement, orders canonical `(TL, TR, BL)` triads invariant to 0°..360° rotation,
+ *     locates the bottom-right Alignment Pattern (`AP`), and rectifies tilted/perspective-skewed QR grids
+ *     via 5-point sub-module majority voting and 8-DOF projective homography (`solvePerspectiveHomography`).
+ * - Stage 4 (Difficult Image & Screen Glare Recovery):
+ *     Applies 5x5 de-moiré smoothing, percentile histogram contrast stretching (2nd–98th percentile),
+ *     3x3 unsharp Laplacian sharpening, inverted polarity recovery, and multi-bias adaptive binarization.
+ * - Stage 5 (Multi-Scale Pyramid & Region Cropping):
+ *     Tests native resolution (`1.0x`) first, followed by bright-LCD ROI extraction and multi-scale pyramid passes.
  */
 
 // Precomputed GF(256) tables for QR Reed-Solomon & BCH format info
@@ -397,7 +404,7 @@ function hasFinderAtCorner(matrix, r0, c0) {
       if (matrix[r][c]) centerDark++;
     }
   }
-  if (centerDark < 6) return false;
+  if (centerDark < 5) return false;
   if (matrix[r0 + 1][c0 + 1] && matrix[r0 + 1][c0 + 5] && matrix[r0 + 5][c0 + 1]) return false;
   return true;
 }
@@ -446,11 +453,11 @@ function decodeQRModuleMatrix(matrix) {
   if (m1) addCand(m1.ecIndex, m1.mask);
   const m2 = decodeFormatInfo(fmt1Rev, fmt2Rev);
   if (m2) addCand(m2.ecIndex, m2.mask);
-  if (candidates.length === 0) {
-    for (let ecIndex = 0; ecIndex < 4; ecIndex++) {
-      for (let mask = 0; mask < 8; mask++) {
-        addCand(ecIndex, mask);
-      }
+
+  // Always include all 32 format candidates as fallback when screen moiré or glare corrupts format bits
+  for (let ecIndex = 0; ecIndex < 4; ecIndex++) {
+    for (let mask = 0; mask < 8; mask++) {
+      addCand(ecIndex, mask);
     }
   }
   const reserved = buildFunctionModuleMap(version);
@@ -554,6 +561,32 @@ function decodeQRModuleMatrix(matrix) {
 }
 
 /**
+ * Fast separable 3x3 Gaussian smoothing filter (`[1, 2, 1] / 4`) to suppress high-frequency
+ * LCD subpixel stripes and moiré patterns while preserving QR module edges.
+ */
+function smoothGray3x3(gray, width, height) {
+  const tmp = new Uint8Array(width * height);
+  const out = new Uint8Array(width * height);
+  for (let y = 0; y < height; y++) {
+    const r = y * width;
+    tmp[r] = gray[r];
+    tmp[r + width - 1] = gray[r + width - 1];
+    for (let x = 1; x < width - 1; x++) {
+      tmp[r + x] = gray[r + x - 1] + (gray[r + x] << 1) + gray[r + x + 1] >> 2;
+    }
+  }
+  out.set(tmp.subarray(0, width), 0);
+  out.set(tmp.subarray((height - 1) * width, height * width), (height - 1) * width);
+  for (let y = 1; y < height - 1; y++) {
+    const r = y * width;
+    for (let x = 0; x < width; x++) {
+      out[r + x] = tmp[r - width + x] + (tmp[r + x] << 1) + tmp[r + width + x] >> 2;
+    }
+  }
+  return out;
+}
+
+/**
  * Percentile contrast normalization + 3x3 unsharp Laplacian kernel for blurry or low-contrast QR codes
  */
 function enhanceAndSharpenGray(gray, width, height) {
@@ -586,8 +619,6 @@ function enhanceAndSharpenGray(gray, width, height) {
     const v = (gray[i] - pLow) * 255 / span;
     stretched[i] = v <= 0 ? 0 : v >= 255 ? 255 : v | 0;
   }
-
-  // Apply 3x3 sharpening kernel: [0, -1, 0, -1, 5, -1, 0, -1, 0]
   const out = new Uint8Array(stretched);
   for (let y = 1; y < height - 1; y++) {
     const row = y * width;
@@ -601,10 +632,9 @@ function enhanceAndSharpenGray(gray, width, height) {
 }
 
 /**
- * Computes an integral image and performs fast Bradley-Roth local adaptive thresholding
- * to handle low-light gradients, shadows, and uneven illumination.
+ * Computes an integral image once so multiple adaptive window radii and biases can be evaluated rapidly
  */
-function binarizeAdaptive(gray, width, height, invert = false, bias = 5) {
+function computeIntegralImage(gray, width, height) {
   const integral = new Int32Array((width + 1) * (height + 1));
   for (let y = 0; y < height; y++) {
     let rowSum = 0;
@@ -616,8 +646,10 @@ function binarizeAdaptive(gray, width, height, invert = false, bias = 5) {
       integral[intRowOff + x + 1] = integral[intPrevOff + x + 1] + rowSum;
     }
   }
+  return integral;
+}
+function binarizeFromIntegral(gray, integral, width, height, radius, bias = 6, invert = false) {
   const bin = new Uint8Array(width * height);
-  const radius = Math.max(8, Math.floor(Math.min(width, height) / 10));
   for (let y = 0; y < height; y++) {
     const y0 = Math.max(0, y - radius);
     const y1 = Math.min(height - 1, y + radius);
@@ -636,70 +668,77 @@ function binarizeAdaptive(gray, width, height, invert = false, bias = 5) {
   }
   return bin;
 }
-
 /**
- * Scans rows for 1:1:3:1:1 QR finder pattern runs and verifies vertical 1:1:3:1:1 symmetry
- * to isolate the true QR code bounding box even when background clutter exists in the camera frame.
+ * Locates 2D QR Finder Pattern centers (`1:1:3:1:1` horizontally and vertically) with weighted
+ * subpixel centroid clustering.
  */
-function locateFinderBoundingBox(bin, width, height) {
-  const centers = [];
-  const checkRatio = counts => {
-    const total = counts[0] + counts[1] + counts[2] + counts[3] + counts[4];
-    if (total < 7) return false;
-    const mod = total / 7;
-    const tol = mod * 0.65;
-    return Math.abs(counts[0] - mod) <= tol && Math.abs(counts[1] - mod) <= tol && Math.abs(counts[2] - 3 * mod) <= 3 * tol && Math.abs(counts[3] - mod) <= tol && Math.abs(counts[4] - mod) <= tol;
+function findFinderClusters2D(bin, width, height) {
+  const checkRatio = c => {
+    const tot = c[0] + c[1] + c[2] + c[3] + c[4];
+    if (tot < 7) return false;
+    const m = tot / 7;
+    const tol = m * 0.65;
+    return Math.abs(c[0] - m) <= tol && Math.abs(c[1] - m) <= tol && Math.abs(c[2] - 3 * m) <= 3 * tol && Math.abs(c[3] - m) <= tol && Math.abs(c[4] - m) <= tol;
   };
-  const verifyVertical = (cx, yStart, maxModule) => {
-    const x = Math.round(cx);
-    if (x < 0 || x >= width || !bin[yStart * width + x]) return null;
-    const counts = [0, 0, 0, 0, 0];
-    let y = yStart;
-    while (y >= 0 && bin[y * width + x]) {
-      counts[2]++;
-      y--;
+  const measureAxis = (xStart, yStart, dx, dy, maxMod) => {
+    const sx = Math.round(xStart);
+    const sy = Math.round(yStart);
+    if (sx < 0 || sx >= width || sy < 0 || sy >= height || !bin[sy * width + sx]) return null;
+    const c = [0, 0, 0, 0, 0];
+    let x = sx;
+    let y = sy;
+    while (x >= 0 && x < width && y >= 0 && y < height && bin[y * width + x]) {
+      c[2]++;
+      x -= dx;
+      y -= dy;
     }
-    if (y < 0) return null;
-    while (y >= 0 && !bin[y * width + x] && counts[1] <= maxModule * 3) {
-      counts[1]++;
-      y--;
+    if (x < 0 || x >= width || y < 0 || y >= height) return null;
+    while (x >= 0 && x < width && y >= 0 && y < height && !bin[y * width + x] && c[1] <= maxMod * 3) {
+      c[1]++;
+      x -= dx;
+      y -= dy;
     }
-    if (y < 0 || counts[1] > maxModule * 3) return null;
-    while (y >= 0 && bin[y * width + x] && counts[0] <= maxModule * 3) {
-      counts[0]++;
-      y--;
+    if (x < 0 || x >= width || y < 0 || y >= height || c[1] > maxMod * 3) return null;
+    while (x >= 0 && x < width && y >= 0 && y < height && bin[y * width + x] && c[0] <= maxMod * 3) {
+      c[0]++;
+      x -= dx;
+      y -= dy;
     }
-    y = yStart + 1;
-    while (y < height && bin[y * width + x]) {
-      counts[2]++;
-      y++;
+    x = sx + dx;
+    y = sy + dy;
+    while (x >= 0 && x < width && y >= 0 && y < height && bin[y * width + x]) {
+      c[2]++;
+      x += dx;
+      y += dy;
     }
-    if (y >= height) return null;
-    while (y < height && !bin[y * width + x] && counts[3] <= maxModule * 3) {
-      counts[3]++;
-      y++;
+    if (x < 0 || x >= width || y < 0 || y >= height) return null;
+    while (x >= 0 && x < width && y >= 0 && y < height && !bin[y * width + x] && c[3] <= maxMod * 3) {
+      c[3]++;
+      x += dx;
+      y += dy;
     }
-    if (y >= height || counts[3] > maxModule * 3) return null;
-    while (y < height && bin[y * width + x] && counts[4] <= maxModule * 3) {
-      counts[4]++;
-      y++;
+    if (x < 0 || x >= width || y < 0 || y >= height || c[3] > maxMod * 3) return null;
+    while (x >= 0 && x < width && y >= 0 && y < height && bin[y * width + x] && c[4] <= maxMod * 3) {
+      c[4]++;
+      x += dx;
+      y += dy;
     }
-    if (!checkRatio(counts)) return null;
-    const vSpan = counts[0] + counts[1] + counts[2] + counts[3] + counts[4];
-    const cy = y - vSpan / 2;
+    if (!checkRatio(c)) return null;
+    const span = c[0] + c[1] + c[2] + c[3] + c[4];
+    const endPos = dx !== 0 ? x : y;
     return {
-      cy,
-      vSpan
+      center: endPos - span / 2,
+      span
     };
   };
-  const stepY = Math.max(1, Math.floor(height / 160));
+  const clusters = [];
+  const stepY = height > 600 ? 2 : 1;
   for (let y = 0; y < height; y += stepY) {
     const rowOff = y * width;
     const counts = [0, 0, 0, 0, 0];
     let state = 0;
     for (let x = 0; x < width; x++) {
-      const isDark = bin[rowOff + x] === 1;
-      if (isDark) {
+      if (bin[rowOff + x] === 1) {
         if (state === 1 || state === 3) state++;
         counts[state]++;
       } else {
@@ -712,17 +751,28 @@ function locateFinderBoundingBox(bin, width, height) {
         } else if (state === 4) {
           if (checkRatio(counts)) {
             const hSpan = counts[0] + counts[1] + counts[2] + counts[3] + counts[4];
-            const cx = x - hSpan / 2;
-            const vCheck = verifyVertical(cx, y, hSpan);
-            if (vCheck && Math.abs(vCheck.vSpan - hSpan) <= Math.max(hSpan, vCheck.vSpan) * 0.4) {
-              const span = (hSpan + vCheck.vSpan) / 2;
-              const existing = centers.find(c => Math.hypot(c.cx - cx, c.cy - vCheck.cy) < span * 0.6);
-              if (!existing) {
-                centers.push({
-                  cx,
-                  cy: vCheck.cy,
-                  span
-                });
+            const cx0 = x - hSpan / 2;
+            const vRes = measureAxis(cx0, y, 0, 1, hSpan);
+            if (vRes && Math.abs(vRes.span - hSpan) <= Math.max(hSpan, vRes.span) * 0.45) {
+              const hRes = measureAxis(cx0, vRes.center, 1, 0, hSpan);
+              if (hRes) {
+                const cx = hRes.center;
+                const cy = vRes.center;
+                const span = (hRes.span + vRes.span) / 2;
+                const existing = clusters.find(cl => Math.hypot(cl.cx - cx, cl.cy - cy) < span * 0.5);
+                if (existing) {
+                  existing.cx = (existing.cx * existing.weight + cx) / (existing.weight + 1);
+                  existing.cy = (existing.cy * existing.weight + cy) / (existing.weight + 1);
+                  existing.span = (existing.span * existing.weight + span) / (existing.weight + 1);
+                  existing.weight++;
+                } else {
+                  clusters.push({
+                    cx,
+                    cy,
+                    span,
+                    weight: 1
+                  });
+                }
               }
             }
           }
@@ -736,55 +786,240 @@ function locateFinderBoundingBox(bin, width, height) {
       }
     }
   }
-  if (centers.length < 3) return null;
-  centers.sort((a, b) => b.span - a.span);
-  const refSpan = centers[0].span;
-  const cluster = centers.filter(c => Math.abs(c.span - refSpan) <= refSpan * 0.45);
-  if (cluster.length < 3) return null;
-  let minX = width;
-  let maxX = 0;
-  let minY = height;
-  let maxY = 0;
-  let spanSum = 0;
-  for (const c of cluster) {
-    const half = c.span / 2;
-    if (c.cx - half < minX) minX = Math.max(0, Math.floor(c.cx - half));
-    if (c.cx + half > maxX) maxX = Math.min(width - 1, Math.ceil(c.cx + half));
-    if (c.cy - half < minY) minY = Math.max(0, Math.floor(c.cy - half));
-    if (c.cy + half > maxY) maxY = Math.min(height - 1, Math.ceil(c.cy + half));
-    spanSum += c.span;
-  }
-  const rMinX = Math.max(0, minX - 2);
-  const rMaxX = Math.min(width - 1, maxX + 2);
-  const rMinY = Math.max(0, minY - 2);
-  const rMaxY = Math.min(height - 1, maxY + 2);
-  let tightMinX = rMaxX;
-  let tightMaxX = rMinX;
-  let tightMinY = rMaxY;
-  let tightMaxY = rMinY;
-  for (let y = rMinY; y <= rMaxY; y++) {
-    const rowOff = y * width;
-    for (let x = rMinX; x <= rMaxX; x++) {
-      if (bin[rowOff + x] === 1) {
-        if (x < tightMinX) tightMinX = x;
-        if (x > tightMaxX) tightMaxX = x;
-        if (y < tightMinY) tightMinY = y;
-        if (y > tightMaxY) tightMaxY = y;
-      }
-    }
-  }
-  if (tightMaxX <= tightMinX || tightMaxY <= tightMinY) return null;
-  return {
-    minX: tightMinX,
-    maxX: tightMaxX,
-    minY: tightMinY,
-    maxY: tightMaxY,
-    avgFinderSpan: spanSum / cluster.length
-  };
+  return clusters.sort((a, b) => b.weight - a.weight);
 }
 
 /**
- * Samples a binary image inside a bounding box across candidate QR versions and all 4 90-degree orientations
+ * Solves an 8-DOF perspective homography mapping canonical QR module coordinates `(u, v)`
+ * to image pixel coordinates `(x, y)` from 4 correspondences.
+ */
+function solvePerspectiveHomography(srcPts, dstPts) {
+  const A = [];
+  const b = [];
+  for (let i = 0; i < 4; i++) {
+    const [u, v] = srcPts[i];
+    const [x, y] = dstPts[i];
+    A.push([u, v, 1, 0, 0, 0, -u * x, -v * x]);
+    b.push(x);
+    A.push([0, 0, 0, u, v, 1, -u * y, -v * y]);
+    b.push(y);
+  }
+
+  // Gaussian elimination with partial pivoting (8x8)
+  const n = 8;
+  for (let col = 0; col < n; col++) {
+    let pivot = col;
+    let maxVal = Math.abs(A[col][col]);
+    for (let row = col + 1; row < n; row++) {
+      const val = Math.abs(A[row][col]);
+      if (val > maxVal) {
+        maxVal = val;
+        pivot = row;
+      }
+    }
+    if (maxVal < 1e-9) return null;
+    if (pivot !== col) {
+      const tmpRow = A[col];
+      A[col] = A[pivot];
+      A[pivot] = tmpRow;
+      const tmpB = b[col];
+      b[col] = b[pivot];
+      b[pivot] = tmpB;
+    }
+    const diag = A[col][col];
+    for (let j = col; j < n; j++) A[col][j] /= diag;
+    b[col] /= diag;
+    for (let row = 0; row < n; row++) {
+      if (row === col) continue;
+      const factor = A[row][col];
+      if (Math.abs(factor) < 1e-12) continue;
+      for (let j = col; j < n; j++) A[row][j] -= factor * A[col][j];
+      b[row] -= factor * b[col];
+    }
+  }
+  return b;
+}
+
+/**
+ * Searches a small neighborhood around the expected bottom-right Alignment Pattern (`AP`)
+ * coordinate for a `1:1:1` dark-light-dark alignment center.
+ */
+function locateAlignmentPatternCenter(bin, width, height, estX, estY, modSize) {
+  const searchRadius = Math.max(4, Math.round(modSize * 3.2));
+  const ringDist = Math.max(1, Math.round(modSize));
+  const outerDist = Math.max(2, Math.round(modSize * 2));
+  let bestScore = -1;
+  let bestX = estX;
+  let bestY = estY;
+  const minY = Math.max(outerDist, Math.round(estY - searchRadius));
+  const maxY = Math.min(height - 1 - outerDist, Math.round(estY + searchRadius));
+  const minX = Math.max(outerDist, Math.round(estX - searchRadius));
+  const maxX = Math.min(width - 1 - outerDist, Math.round(estX + searchRadius));
+  for (let y = minY; y <= maxY; y++) {
+    const rowOff = y * width;
+    for (let x = minX; x <= maxX; x++) {
+      // Alignment center must be dark (1)
+      if (bin[rowOff + x] !== 1) continue;
+
+      // 1-module ring around center should be light (0)
+      let score = 0;
+      if (bin[rowOff + x - ringDist] === 0) score++;
+      if (bin[rowOff + x + ringDist] === 0) score++;
+      if (bin[(y - ringDist) * width + x] === 0) score++;
+      if (bin[(y + ringDist) * width + x] === 0) score++;
+      if (score < 3) continue;
+
+      // 2-module outer ring should be dark (1)
+      if (bin[rowOff + x - outerDist] === 1) score++;
+      if (bin[rowOff + x + outerDist] === 1) score++;
+      if (bin[(y - outerDist) * width + x] === 1) score++;
+      if (bin[(y + outerDist) * width + x] === 1) score++;
+      const distPenalty = Math.hypot(x - estX, y - estY) / (searchRadius + 1);
+      const totalScore = score - distPenalty;
+      if (totalScore > bestScore) {
+        bestScore = totalScore;
+        bestX = x;
+        bestY = y;
+      }
+    }
+  }
+  return bestScore >= 5.5 ? {
+    x: bestX,
+    y: bestY
+  } : null;
+}
+
+/**
+ * Given 2D finder clusters, forms valid right-angle `(TL, TR, BL)` triads and rectifies
+ * the tilted/skewed QR code using 5-point sub-module majority voting and 8-DOF perspective homography.
+ */
+function decodeFromFinderTriads(bin, width, height) {
+  const clusters = findFinderClusters2D(bin, width, height);
+  if (clusters.length < 3) return null;
+  const topClusters = clusters.slice(0, 10);
+  const K = topClusters.length;
+  for (let i = 0; i < K - 2; i++) {
+    for (let j = i + 1; j < K - 1; j++) {
+      for (let k = j + 1; k < K; k++) {
+        const triad = [topClusters[i], topClusters[j], topClusters[k]];
+        const maxSpan = Math.max(triad[0].span, triad[1].span, triad[2].span);
+        const minSpan = Math.min(triad[0].span, triad[1].span, triad[2].span);
+        if (maxSpan > minSpan * 1.85) continue;
+        const d01 = Math.hypot(triad[0].cx - triad[1].cx, triad[0].cy - triad[1].cy);
+        const d12 = Math.hypot(triad[1].cx - triad[2].cx, triad[1].cy - triad[2].cy);
+        const d02 = Math.hypot(triad[0].cx - triad[2].cx, triad[0].cy - triad[2].cy);
+        let tl;
+        let pA;
+        let pB;
+        let leg1;
+        let leg2;
+        if (d01 >= d12 && d01 >= d02) {
+          tl = triad[2];
+          pA = triad[0];
+          pB = triad[1];
+          leg1 = d02;
+          leg2 = d12;
+        } else if (d12 >= d01 && d12 >= d02) {
+          tl = triad[0];
+          pA = triad[1];
+          pB = triad[2];
+          leg1 = d01;
+          leg2 = d02;
+        } else {
+          tl = triad[1];
+          pA = triad[0];
+          pB = triad[2];
+          leg1 = d01;
+          leg2 = d12;
+        }
+        if (leg1 < 14 || leg2 < 14) continue;
+        if (Math.max(leg1, leg2) > Math.min(leg1, leg2) * 1.55) continue;
+
+        // Check angle between leg vectors is roughly 90° (60°..120°)
+        const dot = (pA.cx - tl.cx) * (pB.cx - tl.cx) + (pA.cy - tl.cy) * (pB.cy - tl.cy);
+        const cosTheta = dot / (leg1 * leg2);
+        if (Math.abs(cosTheta) > 0.5) continue;
+        const cross = (pA.cx - tl.cx) * (pB.cy - tl.cy) - (pA.cy - tl.cy) * (pB.cx - tl.cx);
+        const tr = cross > 0 ? pA : pB;
+        const bl = cross > 0 ? pB : pA;
+        const avgSpan = (tl.span + tr.span + bl.span) / 3;
+        const modSize = avgSpan / 7;
+        const avgLeg = (leg1 + leg2) / 2;
+        const estN = Math.round(7 + avgLeg / modSize);
+        const estVer = Math.max(1, Math.min(15, Math.round((estN - 17) / 4)));
+        const candidateVersions = [];
+        for (const dv of [0, -1, 1, -2, 2]) {
+          const v = estVer + dv;
+          if (v >= 1 && v <= 15 && !candidateVersions.includes(v)) {
+            candidateVersions.push(v);
+          }
+        }
+        for (const v of candidateVersions) {
+          const N = v * 4 + 17;
+          const spanMods = N - 7;
+          const uX = (tr.cx - tl.cx) / spanMods;
+          const uY = (tr.cy - tl.cy) / spanMods;
+          const vX = (bl.cx - tl.cx) / spanMods;
+          const vY = (bl.cy - tl.cy) / spanMods;
+
+          // 1. Sub-module 5-point majority-vote affine grid sampling (eliminates single-pixel LCD moiré)
+          const matrixAffine = Array.from({
+            length: N
+          }, () => Array(N).fill(false));
+          const offsets = [[0, 0], [0.2, 0], [-0.2, 0], [0, 0.2], [0, -0.2]];
+          for (let r = 0; r < N; r++) {
+            for (let c = 0; c < N; c++) {
+              let darkVotes = 0;
+              for (const [du, dv] of offsets) {
+                const px = Math.round(tl.cx + (c - 3 + du) * uX + (r - 3 + dv) * vX);
+                const py = Math.round(tl.cy + (c - 3 + du) * uY + (r - 3 + dv) * vY);
+                if (px >= 0 && px < width && py >= 0 && py < height && bin[py * width + px] === 1) {
+                  darkVotes++;
+                }
+              }
+              matrixAffine[r][c] = darkVotes >= 3;
+            }
+          }
+          const decodedAffine = decodeQRModuleMatrix(matrixAffine);
+          if (decodedAffine) return decodedAffine;
+
+          // 2. If Version >= 2, locate bottom-right Alignment Pattern (`AP`) and apply 8-DOF Perspective Homography
+          if (v >= 2) {
+            const apEstX = tl.cx + (N - 10) * uX + (N - 10) * vX;
+            const apEstY = tl.cy + (N - 10) * uY + (N - 10) * vY;
+            const ap = locateAlignmentPatternCenter(bin, width, height, apEstX, apEstY, modSize);
+            if (ap) {
+              const H = solvePerspectiveHomography([[3.5, 3.5], [N - 3.5, 3.5], [3.5, N - 3.5], [N - 6.5, N - 6.5]], [[tl.cx, tl.cy], [tr.cx, tr.cy], [bl.cx, bl.cy], [ap.x, ap.y]]);
+              if (H) {
+                const matrixPersp = Array.from({
+                  length: N
+                }, () => Array(N).fill(false));
+                for (let r = 0; r < N; r++) {
+                  const vCoord = r + 0.5;
+                  for (let c = 0; c < N; c++) {
+                    const uCoord = c + 0.5;
+                    const denom = H[6] * uCoord + H[7] * vCoord + 1;
+                    const px = Math.round((H[0] * uCoord + H[1] * vCoord + H[2]) / denom);
+                    const py = Math.round((H[3] * uCoord + H[4] * vCoord + H[5]) / denom);
+                    if (px >= 0 && px < width && py >= 0 && py < height) {
+                      matrixPersp[r][c] = bin[py * width + px] === 1;
+                    }
+                  }
+                }
+                const decodedPersp = decodeQRModuleMatrix(matrixPersp);
+                if (decodedPersp) return decodedPersp;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Legacy bounding-box sampler for clean synthetic axis-aligned QR codes across 0°/90°/180°/270°
  */
 function sampleAndDecodeBoundingBox(bin, width, height, minX, maxX, minY, maxY, hintFinderSpan) {
   const boxW = maxX - minX + 1;
@@ -841,22 +1076,19 @@ function sampleAndDecodeBoundingBox(bin, width, height, minX, maxX, minY, maxY, 
 }
 
 /**
- * Extracts and decodes a QR code from an `ImageData` buffer using a progressive multi-stage pipeline:
- * - Stage 1: Global `jsQR` (with `inversionAttempts: 'attemptBoth'`) if available in browser
- * - Stage 2: Fast global mid-luminance threshold + tight bounding box + 4-orientation matrix decoder
- * - Stage 3: Inverted global polarity (white QR on dark background)
- * - Stage 4: Integral-image local adaptive thresholding + 1:1:3:1:1 finder pattern localization
- * - Stage 5: Percentile contrast stretch + 3x3 sharpening + multi-threshold adaptive recovery
+ * Extracts and decodes a QR code from an `ImageData` buffer using the v5.0 multi-stage
+ * screen-aware & perspective-rectifying recognition pipeline.
  */
-function extractAndDecodeFromImageData(imageData) {
+function extractAndDecodeFromImageData(imageData, onProgress) {
   const {
     data,
     width,
     height
   } = imageData;
   if (width < 21 || height < 21) return null;
+  if (onProgress) onProgress('stageReadingOriginal');
 
-  // Stage 1: Global jsQR (when loaded)
+  // Stage 1A: Global jsQR (when present in browser environment)
   const globalWindow = typeof window !== 'undefined' ? window : {};
   if (typeof globalWindow.jsQR === 'function') {
     try {
@@ -885,7 +1117,7 @@ function extractAndDecodeFromImageData(imageData) {
   if (maxLum - minLum < 8) return null;
   const midThreshold = minLum + maxLum >> 1;
 
-  // Stage 2: Fast Global Threshold (Normal Polarity)
+  // Stage 1B: Fast Global Threshold (Normal Polarity)
   const binNormal = new Uint8Array(totalPixels);
   let minX = width,
     maxX = -1,
@@ -906,14 +1138,47 @@ function extractAndDecodeFromImageData(imageData) {
   if (maxX > minX && maxY > minY) {
     const fastRes = sampleAndDecodeBoundingBox(binNormal, width, height, minX, maxX, minY, maxY);
     if (fastRes) return fastRes;
-    const finderBox = locateFinderBoundingBox(binNormal, width, height);
-    if (finderBox) {
-      const locRes = sampleAndDecodeBoundingBox(binNormal, width, height, finderBox.minX, finderBox.maxX, finderBox.minY, finderBox.maxY, finderBox.avgFinderSpan);
-      if (locRes) return locRes;
+    const triadGlobal = decodeFromFinderTriads(binNormal, width, height);
+    if (triadGlobal) return triadGlobal;
+  }
+
+  // Stage 2: 2D De-Moiré Separable Gaussian 3x3 Smoothing + Module-Scale Integral Adaptive Binarization
+  // (Specifically engineered for LCD/OLED screens, moiré patterns, uneven backlight, and camera tilt)
+  if (onProgress) onProgress('stageDetectingRegions');
+  const smooth3 = smoothGray3x3(gray, width, height);
+  const integralSmooth = computeIntegralImage(smooth3, width, height);
+  const rModuleScale = Math.max(8, Math.min(28, Math.floor(Math.min(width, height) / 30)));
+  const rBroadScale = Math.max(12, Math.floor(Math.min(width, height) / 10));
+  for (const [radius, bias] of [[rModuleScale, 6], [rBroadScale, 5], [rModuleScale, 3], [rModuleScale, 11]]) {
+    if (onProgress) onProgress('stageCorrectingPerspective');
+    const binAdap = binarizeFromIntegral(smooth3, integralSmooth, width, height, radius, bias, false);
+    const triadDecoded = decodeFromFinderTriads(binAdap, width, height);
+    if (triadDecoded) return triadDecoded;
+
+    // Also try axis-aligned bounding-box fallback for clean adaptive images
+    let aMinX = width,
+      aMaxX = -1,
+      aMinY = height,
+      aMaxY = -1;
+    for (let y = 0; y < height; y++) {
+      const rowOff = y * width;
+      for (let x = 0; x < width; x++) {
+        if (binAdap[rowOff + x] === 1) {
+          if (x < aMinX) aMinX = x;
+          if (x > aMaxX) aMaxX = x;
+          if (y < aMinY) aMinY = y;
+          if (y > aMaxY) aMaxY = y;
+        }
+      }
+    }
+    if (aMaxX > aMinX && aMaxY > aMinY) {
+      const boxDecoded = sampleAndDecodeBoundingBox(binAdap, width, height, aMinX, aMaxX, aMinY, aMaxY);
+      if (boxDecoded) return boxDecoded;
     }
   }
 
-  // Stage 3: Inverted Polarity (Light QR on Dark Background)
+  // Stage 3: Inverted Polarity Recovery (Light QR on Dark Background)
+  if (onProgress) onProgress('stageImprovingQuality');
   const binInverted = new Uint8Array(totalPixels);
   let invMinX = width,
     invMaxX = -1,
@@ -932,53 +1197,31 @@ function extractAndDecodeFromImageData(imageData) {
     }
   }
   if (invMaxX > invMinX && invMaxY > invMinY) {
-    const invRes = sampleAndDecodeBoundingBox(binInverted, width, height, invMinX, invMaxX, invMinY, invMaxY);
-    if (invRes) return invRes;
+    const invBox = sampleAndDecodeBoundingBox(binInverted, width, height, invMinX, invMaxX, invMinY, invMaxY);
+    if (invBox) return invBox;
+    const invTriad = decodeFromFinderTriads(binInverted, width, height);
+    if (invTriad) return invTriad;
   }
 
-  // Stage 4: Integral-Image Local Adaptive Thresholding (Low-Light, Uneven Gradients, Shadows)
-  const binAdaptive = binarizeAdaptive(gray, width, height, false, 5);
-  const adapFinderBox = locateFinderBoundingBox(binAdaptive, width, height);
-  if (adapFinderBox) {
-    const adapRes = sampleAndDecodeBoundingBox(binAdaptive, width, height, adapFinderBox.minX, adapFinderBox.maxX, adapFinderBox.minY, adapFinderBox.maxY, adapFinderBox.avgFinderSpan);
-    if (adapRes) return adapRes;
-  }
-  let aMinX = width,
-    aMaxX = -1,
-    aMinY = height,
-    aMaxY = -1;
-  for (let y = 0; y < height; y++) {
-    const rowOff = y * width;
-    for (let x = 0; x < width; x++) {
-      if (binAdaptive[rowOff + x] === 1) {
-        if (x < aMinX) aMinX = x;
-        if (x > aMaxX) aMaxX = x;
-        if (y < aMinY) aMinY = y;
-        if (y > aMaxY) aMaxY = y;
-      }
-    }
-  }
-  if (aMaxX > aMinX && aMaxY > aMinY) {
-    const adapFallback = sampleAndDecodeBoundingBox(binAdaptive, width, height, aMinX, aMaxX, aMinY, aMaxY);
-    if (adapFallback) return adapFallback;
-  }
-
-  // Stage 5: Percentile Contrast Stretch + 3x3 Sharpening + Alternative Adaptive Threshold
+  // Stage 4: Stronger 2-Pass De-Moiré Smoothing (for heavy LCD pixel grids) + Contrast Stretch & Sharpening
+  if (onProgress) onProgress('stageAlternativeDecoders');
+  const smooth5 = smoothGray3x3(smooth3, width, height);
+  const intSmooth5 = computeIntegralImage(smooth5, width, height);
+  const binSmooth5 = binarizeFromIntegral(smooth5, intSmooth5, width, height, rModuleScale, 5, false);
+  const smooth5Decoded = decodeFromFinderTriads(binSmooth5, width, height);
+  if (smooth5Decoded) return smooth5Decoded;
   const sharpened = enhanceAndSharpenGray(gray, width, height);
-  const binSharpened = binarizeAdaptive(sharpened, width, height, false, 8);
-  const sharpFinder = locateFinderBoundingBox(binSharpened, width, height);
-  if (sharpFinder) {
-    const sharpRes = sampleAndDecodeBoundingBox(binSharpened, width, height, sharpFinder.minX, sharpFinder.maxX, sharpFinder.minY, sharpFinder.maxY, sharpFinder.avgFinderSpan);
-    if (sharpRes) return sharpRes;
-  }
+  const intSharp = computeIntegralImage(sharpened, width, height);
+  const binSharp = binarizeFromIntegral(sharpened, intSharp, width, height, rModuleScale, 7, false);
+  const sharpDecoded = decodeFromFinderTriads(binSharp, width, height);
+  if (sharpDecoded) return sharpDecoded;
   return null;
 }
 
 /**
- * Detects ALL distinct QR codes present inside an `ImageData` buffer (e.g. side-by-side or stacked QR codes
- * in an uploaded screenshot or comparison sheet).
+ * Detects ALL distinct QR codes present inside an `ImageData` buffer
  */
-function extractAllQRCodesFromImageData(imageData) {
+function extractAllQRCodesFromImageData(imageData, onProgress) {
   const results = [];
   const addUnique = val => {
     if (val && !results.includes(val)) {
@@ -986,8 +1229,8 @@ function extractAllQRCodesFromImageData(imageData) {
     }
   };
 
-  // 1. Try whole image first
-  const primary = extractAndDecodeFromImageData(imageData);
+  // 1. Try whole image at native resolution first
+  const primary = extractAndDecodeFromImageData(imageData, onProgress);
   addUnique(primary);
   const {
     data,
@@ -995,8 +1238,6 @@ function extractAllQRCodesFromImageData(imageData) {
     height
   } = imageData;
   if (width >= 48 && height >= 48) {
-    // 2. Check left & right halves if image is wide enough to hold side-by-side QR codes
-    const midX = Math.floor(width / 2);
     const cropRegion = (x0, y0, rw, rh) => {
       const buf = new Uint8ClampedArray(rw * rh * 4);
       for (let y = 0; y < rh; y++) {
@@ -1009,12 +1250,11 @@ function extractAllQRCodesFromImageData(imageData) {
         height: rh
       };
     };
+    const midX = Math.floor(width / 2);
     if (midX >= 25) {
       addUnique(extractAndDecodeFromImageData(cropRegion(0, 0, midX, height)));
       addUnique(extractAndDecodeFromImageData(cropRegion(midX, 0, width - midX, height)));
     }
-
-    // 3. Check top & bottom halves if image is tall enough to hold stacked QR codes
     const midY = Math.floor(height / 2);
     if (midY >= 25) {
       addUnique(extractAndDecodeFromImageData(cropRegion(0, 0, width, midY)));
@@ -1052,10 +1292,11 @@ function getBarcodeDetector() {
 }
 
 /**
- * Decodes a QR code from an `HTMLImageElement`, `HTMLVideoElement`, or `HTMLCanvasElement`
- * using a fast ROI-first strategy for live video frames and multi-scale recovery for uploaded images.
+ * Decodes a QR code from an `HTMLImageElement`, `HTMLVideoElement`, or `HTMLCanvasElement`.
+ * CRITICAL: Preserves full native image resolution on the initial pass for uploaded images.
  */
-async function decodeQRFromSource(source) {
+async function decodeQRFromSource(source, onProgress) {
+  if (onProgress) onProgress('stageReadingOriginal');
   const detector = getBarcodeDetector();
   if (detector) {
     try {
@@ -1064,7 +1305,7 @@ async function decodeQRFromSource(source) {
         return results[0].rawValue;
       }
     } catch {
-      // Fall through to canvas decoder
+      // Fall through to multi-stage canvas decoder
     }
   }
   const canvas = getSharedCanvas();
@@ -1087,59 +1328,60 @@ async function decodeQRFromSource(source) {
   });
   if (!ctx) return null;
 
-  // For live video frames: fast center Region-of-Interest (ROI) pass at 420x420 first (~2–4ms)
+  // Live video frame path: center ROI pass first (`480x480`), then full frame (`720px`)
   if (isVideo) {
     const minDim = Math.min(w, h);
-    const cropSize = Math.floor(minDim * 0.78);
+    const cropSize = Math.floor(minDim * 0.8);
     const sx = Math.floor((w - cropSize) / 2);
     const sy = Math.floor((h - cropSize) / 2);
-    const roiTarget = Math.min(420, cropSize);
+    const roiTarget = Math.min(480, cropSize);
     canvas.width = roiTarget;
     canvas.height = roiTarget;
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
     ctx.drawImage(source, sx, sy, cropSize, cropSize, 0, 0, roiTarget, roiTarget);
     const roiData = ctx.getImageData(0, 0, roiTarget, roiTarget);
     const roiDecoded = extractAndDecodeFromImageData(roiData);
     if (roiDecoded) return roiDecoded;
-
-    // Full-frame fallback at 560px max dimension
-    const scale = Math.min(1, 560 / Math.max(w, h));
+    const scale = Math.min(1, 720 / Math.max(w, h));
     const fw = Math.max(21, Math.round(w * scale));
     const fh = Math.max(21, Math.round(h * scale));
     canvas.width = fw;
     canvas.height = fh;
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
     ctx.drawImage(source, 0, 0, fw, fh);
     return extractAndDecodeFromImageData(ctx.getImageData(0, 0, fw, fh));
   }
 
-  // For uploaded static images: multi-scale + rotation recovery
+  // Uploaded static image path: ALWAYS preserve native 1.0x resolution first (up to 2560px)
   const maxDim = Math.max(w, h);
-  const scales = maxDim < 180 ? [2.0, 1.0] : [Math.min(1, 900 / maxDim), Math.min(1, 512 / maxDim)];
-  for (const scale of scales) {
+  const scales = maxDim < 200 ? [1.0, 2.0] : maxDim <= 2560 ? [1.0, Math.min(1, 1280 / maxDim), Math.min(1, 768 / maxDim)] : [2560 / maxDim, 1280 / maxDim, 768 / maxDim];
+  const uniqueScales = Array.from(new Set(scales.map(s => Number(s.toFixed(4)))));
+  for (const scale of uniqueScales) {
     const sw = Math.max(21, Math.round(w * scale));
     const sh = Math.max(21, Math.round(h * scale));
     canvas.width = sw;
     canvas.height = sh;
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, sw, sh);
-    ctx.imageSmoothingEnabled = false;
+    // Use high-quality bilinear filtering when downscaling photos; use crisp sampling when upscaling tiny QR codes
+    ctx.imageSmoothingEnabled = scale < 1.0;
     ctx.drawImage(source, 0, 0, sw, sh);
     const imgData = ctx.getImageData(0, 0, sw, sh);
-    const decoded = extractAndDecodeFromImageData(imgData);
+    const decoded = extractAndDecodeFromImageData(imgData, onProgress);
     if (decoded) return decoded;
   }
   return null;
 }
 
 /**
- * Decodes all QR codes present in an uploaded image element or canvas
+ * Decodes all QR codes present in an uploaded image element or canvas, preserving original resolution first
  */
-async function decodeAllQRCodesFromSource(source) {
+async function decodeAllQRCodesFromSource(source, onProgress) {
   const unique = [];
   const add = val => {
     if (val && !unique.includes(val)) unique.push(val);
   };
+  if (onProgress) onProgress('stageReadingOriginal');
   const detector = getBarcodeDetector();
   if (detector) {
     try {
@@ -1160,18 +1402,22 @@ async function decodeAllQRCodesFromSource(source) {
     });
     if (ctx) {
       const maxDim = Math.max(w, h);
-      const scale = maxDim < 180 ? 2.0 : Math.min(1, 900 / maxDim);
-      const sw = Math.max(21, Math.round(w * scale));
-      const sh = Math.max(21, Math.round(h * scale));
-      canvas.width = sw;
-      canvas.height = sh;
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, sw, sh);
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(source, 0, 0, sw, sh);
-      const imgData = ctx.getImageData(0, 0, sw, sh);
-      for (const found of extractAllQRCodesFromImageData(imgData)) {
-        add(found);
+      const scales = maxDim < 200 ? [1.0, 2.0] : maxDim <= 2560 ? [1.0, Math.min(1, 1280 / maxDim)] : [2560 / maxDim, 1280 / maxDim];
+      const uniqueScales = Array.from(new Set(scales.map(s => Number(s.toFixed(4)))));
+      for (const scale of uniqueScales) {
+        const sw = Math.max(21, Math.round(w * scale));
+        const sh = Math.max(21, Math.round(h * scale));
+        canvas.width = sw;
+        canvas.height = sh;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, sw, sh);
+        ctx.imageSmoothingEnabled = scale < 1.0;
+        ctx.drawImage(source, 0, 0, sw, sh);
+        const imgData = ctx.getImageData(0, 0, sw, sh);
+        for (const found of extractAllQRCodesFromImageData(imgData, onProgress)) {
+          add(found);
+        }
+        if (unique.length > 0) break;
       }
     }
   }
@@ -1181,7 +1427,7 @@ async function decodeAllQRCodesFromSource(source) {
 /**
  * Decodes an uploaded image File (PNG, JPG/JPEG, WEBP) into a raw QR payload string.
  */
-function decodeQRFromFile(file) {
+function decodeQRFromFile(file, onProgress) {
   return new Promise((resolve, reject) => {
     const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'image/bmp'];
     const ext = file.name.toLowerCase().split('.').pop() || '';
@@ -1197,7 +1443,7 @@ function decodeQRFromFile(file) {
       img.onerror = () => reject(new Error('The selected file is not a valid image.'));
       img.onload = async () => {
         try {
-          const payload = await decodeQRFromSource(img);
+          const payload = await decodeQRFromSource(img, onProgress);
           if (payload) {
             resolve(payload);
           } else {
@@ -1214,9 +1460,9 @@ function decodeQRFromFile(file) {
 }
 
 /**
- * Decodes one or more QR codes from an uploaded image File (supporting multi-QR selection)
+ * Decodes one or more QR codes from an uploaded image File (supporting multi-QR selection & progress feedback)
  */
-function decodeAllQRCodesFromFile(file) {
+function decodeAllQRCodesFromFile(file, onProgress) {
   return new Promise((resolve, reject) => {
     const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'image/bmp'];
     const ext = file.name.toLowerCase().split('.').pop() || '';
@@ -1232,7 +1478,7 @@ function decodeAllQRCodesFromFile(file) {
       img.onerror = () => reject(new Error('The selected file is not a valid image.'));
       img.onload = async () => {
         try {
-          const payloads = await decodeAllQRCodesFromSource(img);
+          const payloads = await decodeAllQRCodesFromSource(img, onProgress);
           if (payloads.length > 0) {
             resolve(payloads);
           } else {
