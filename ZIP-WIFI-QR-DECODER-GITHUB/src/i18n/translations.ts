@@ -174,6 +174,35 @@ export interface TranslationDictionary {
   toastLanguageChanged: string;
   toastDecodeError: string;
   toastTorchUnsupported: string;
+  navAccount: string;
+  accountTitle: string;
+  accountSubtitle: string;
+  accountStatusGuest: string;
+  accountStatusSignedIn: string;
+  accountLoginTab: string;
+  accountRegisterTab: string;
+  accountResetTab: string;
+  accountEmailLabel: string;
+  accountEmailPlaceholder: string;
+  accountPasswordLabel: string;
+  accountPasswordPlaceholder: string;
+  btnSignIn: string;
+  btnCreateAccount: string;
+  btnSendResetLink: string;
+  btnSignOut: string;
+  btnConfirmSignOut: string;
+  btnDeleteAccount: string;
+  btnConfirmDeleteAccount: string;
+  accountPrivacyNoticeTitle: string;
+  accountPrivacyNoticeDesc: string;
+  accountSyncSsidLabel: string;
+  accountSyncedHistoryHeading: string;
+  accountSyncedHistoryEmpty: string;
+  toastSignedIn: string;
+  toastRegistered: string;
+  toastSignedOut: string;
+  toastResetSent: string;
+  toastAccountDeleted: string;
 }
 
 export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
@@ -362,6 +391,35 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     toastLanguageChanged: 'زمان گۆڕدرا بۆ کوردی سۆرانی.',
     toastDecodeError: 'هیچ کۆدێکی دروستی QR لەم وێنەیەدا نەدۆزرایەوە.',
     toastTorchUnsupported: 'کۆنترۆڵکردنی فلاش لەسەر ئەم کامێرایە پشتگیری ناکرێت.',
+    navAccount: 'هەژمار',
+    accountTitle: 'هەژماری بەکارهێنەر و هاوکاتکردنی تایبەت',
+    accountSubtitle: 'سکانکردنی QR بەبێ هەژمار بەردەستە. هەژمار تەنها بۆ هاوکاتکردنی تایبەت و پارێزراوی مێژووی سکانە (بەبێ ناردنی تێپەڕەوشەی وای-فای).',
+    accountStatusGuest: 'دۆخی میوان (تەنها ناوخۆیی)',
+    accountStatusSignedIn: 'چوونەژوورەوە وەک',
+    accountLoginTab: 'چوونەژوورەوە',
+    accountRegisterTab: 'تۆمارکردنی هەژمار',
+    accountResetTab: 'گەڕاندنەوەی تێپەڕەوشە',
+    accountEmailLabel: 'ناونیشانی ئیمەیڵ',
+    accountEmailPlaceholder: 'user@example.com',
+    accountPasswordLabel: 'تێپەڕەوشە (لانیکەم ٨ پیت)',
+    accountPasswordPlaceholder: '••••••••',
+    btnSignIn: 'چوونەژوورەوە',
+    btnCreateAccount: 'دروستکردنی هەژمار',
+    btnSendResetLink: 'ناردنی بەستەری گەڕاندنەوە',
+    btnSignOut: 'چوونەدەرەوە',
+    btnConfirmSignOut: 'دڵنیایت لە چوونەدەرەوە لە هەژمارەکەت؟',
+    btnDeleteAccount: 'سڕینەوەی یەکجاری هەژمار',
+    btnConfirmDeleteAccount: 'بەڵێ، هەژمار و تۆمارەکانم بسڕەوە',
+    accountPrivacyNoticeTitle: 'پاراستنی داتای تایبەت (RLS) و سیاسەتی بێ تێپەڕەوشە',
+    accountPrivacyNoticeDesc: 'تێپەڕەوشەی وای-فای و دەقی نهێنی QR هەرگیز بۆ سێرڤەر نانێردرێن. تەنها زانیاری گشتی (کاتی سکان، جۆری پاراستن، و ناوی تۆڕ ئەگەر چالاک بێت) بە جیاکراوەیی بۆ هەژماری خۆت هەڵدەگیرێت.',
+    accountSyncSsidLabel: 'هاوکاتکردنی ناوی تۆڕ (SSID) لە مێژووی هەژماردا',
+    accountSyncedHistoryHeading: 'تۆمارە هاوکاتکراوەکانی هەژمارەکەت (جیاکراوە بە RLS)',
+    accountSyncedHistoryEmpty: 'هیچ تۆمارێکی هاوکاتکراو لەم هەژمارەدا نییە.',
+    toastSignedIn: 'بە سەرکەوتوویی چوویتە ژوورەوە!',
+    toastRegistered: 'هەژماری تایبەت بە سەرکەوتوویی دروستکرا!',
+    toastSignedOut: 'لە هەژمارەکەت چوویتە دەرەوە و داتای کاتی پاککرایەوە.',
+    toastResetSent: 'ڕێنمایی گەڕاندنەوەی تێپەڕەوشە نێردرا بۆ ئیمەیڵەکەت.',
+    toastAccountDeleted: 'هەژمار و هەموو تۆمارە پەیوەندیدارەکانت بە یەکجاری سڕانەوە.',
   },
 
   en: {
@@ -549,5 +607,34 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     toastLanguageChanged: 'Language switched to English.',
     toastDecodeError: 'Could not decode a valid QR code from this image.',
     toastTorchUnsupported: 'Flashlight control not supported on this camera.',
+    navAccount: 'Account',
+    accountTitle: 'User Account & Private Sync',
+    accountSubtitle: 'Scanning works without registration. Accounts are optional and used strictly for RLS-isolated metadata history sync (Wi-Fi passwords are never uploaded).',
+    accountStatusGuest: 'Guest Mode (Local Only)',
+    accountStatusSignedIn: 'Signed in as',
+    accountLoginTab: 'Sign In',
+    accountRegisterTab: 'Register',
+    accountResetTab: 'Reset Password',
+    accountEmailLabel: 'Email Address',
+    accountEmailPlaceholder: 'user@example.com',
+    accountPasswordLabel: 'Password (min. 8 chars)',
+    accountPasswordPlaceholder: '••••••••',
+    btnSignIn: 'Sign In',
+    btnCreateAccount: 'Create Account',
+    btnSendResetLink: 'Send Password Reset',
+    btnSignOut: 'Sign Out',
+    btnConfirmSignOut: 'Confirm signing out of your account?',
+    btnDeleteAccount: 'Delete Account Permanently',
+    btnConfirmDeleteAccount: 'Yes, Delete My Account & Records',
+    accountPrivacyNoticeTitle: 'Row-Level Security (RLS) & Zero-Password Server Policy',
+    accountPrivacyNoticeDesc: 'Plaintext Wi-Fi passwords and raw QR payloads are never uploaded to any server. Only non-sensitive metadata (timestamp, security type, and optional SSID) is isolated to your account.',
+    accountSyncSsidLabel: 'Include network name (SSID) in account metadata sync',
+    accountSyncedHistoryHeading: 'Your Isolated Account Metadata Records (RLS Protected)',
+    accountSyncedHistoryEmpty: 'No synchronized metadata records for this account yet.',
+    toastSignedIn: 'Signed in to your account!',
+    toastRegistered: 'Account created and isolated session started!',
+    toastSignedOut: 'Signed out and cleared private in-memory session state.',
+    toastResetSent: 'Password reset instructions dispatched to your email.',
+    toastAccountDeleted: 'Your account and all associated records have been permanently deleted.',
   },
 };

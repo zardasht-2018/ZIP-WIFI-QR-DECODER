@@ -652,6 +652,220 @@ print(json.dumps(out))
     assert.ok(builtJs.includes("type: 'SKIP_WAITING'"));
   });
 
+// 25. Scanner Resilience Suite (Small, Blurry, Rotated 90/180/270, Low-Light Gradient, Inverted Dark Mode, Damaged Center, Cluttered Camera Frame)
+  await runTest(25, 'Scanner v3.0 decodes small, blurry, rotated (90/180/270), low-light, inverted, damaged, and cluttered QR images', () => {
+    const pyScript = `
+import cv2, json, numpy as np
+from PIL import Image, ImageFilter
+
+payload = "WIFI:T:WPA2;S:Challenging_Net_5G;P:Hard#Pass\\;2026!;H:true;;"
+enc = cv2.QRCodeEncoder.create()
+raw = enc.encode(payload)
+h, w = raw.shape
+base = cv2.resize(raw, (w * 8, h * 8), interpolation=cv2.INTER_NEAREST)
+
+cases = []
+pil_clear = Image.fromarray(base).convert("RGBA")
+cases.append(("clear", pil_clear))
+cases.append(("small_74px", Image.fromarray(cv2.resize(raw, (w * 2, h * 2), interpolation=cv2.INTER_NEAREST)).convert("RGBA")))
+cases.append(("blurry", Image.fromarray(base).convert("RGB").filter(ImageFilter.GaussianBlur(radius=1.5)).convert("RGBA")))
+cases.append(("rot90", pil_clear.rotate(90, expand=True)))
+cases.append(("rot180", pil_clear.rotate(180, expand=True)))
+cases.append(("rot270", pil_clear.rotate(270, expand=True)))
+
+yy, xx = np.mgrid[0:base.shape[0], 0:base.shape[1]]
+grad = (xx / base.shape[1]) * 40.0
+low_light = np.clip((base / 255.0) * 35.0 + 25.0 + grad, 0, 255).astype(np.uint8)
+cases.append(("low_light_gradient", Image.fromarray(low_light).convert("RGBA")))
+
+cases.append(("inverted_dark_mode", Image.fromarray(255 - base).convert("RGBA")))
+
+dmg = base.copy()
+ch, cw = dmg.shape[0] // 2, dmg.shape[1] // 2
+dmg[ch-12:ch+12, cw-12:cw+12] = 128
+cases.append(("damaged_center", Image.fromarray(dmg).convert("RGBA")))
+
+frame = np.full((480, 640), 210, dtype=np.uint8)
+frame[10:30, 10:30] = 15
+qh, qw = base.shape
+frame[140:140+qh, 200:200+qw] = base
+cases.append(("cluttered_camera_frame", Image.fromarray(frame).convert("RGBA")))
+
+out = []
+for name, im in cases:
+    out.append({"name": name, "w": im.size[0], "h": im.size[1], "rgba": list(im.tobytes()), "expected": payload})
+print(json.dumps(out))
+`;
+    const items = JSON.parse(execSync(`python3 -c '${pyScript}'`, { maxBuffer: 150 * 1024 * 1024 }).toString());
+    assert.strictEqual(items.length, 10);
+    for (const item of items) {
+      const decoded = qrDecoder.extractAndDecodeFromImageData({
+        width: item.w,
+        height: item.h,
+        data: new Uint8ClampedArray(item.rgba),
+      });
+      assert.strictEqual(decoded, item.expected, `Failed on condition: ${item.name}`);
+    }
+    // Also verify invalid/blank image safely returns null without throwing
+    const blank = new Uint8ClampedArray(100 * 100 * 4).fill(240);
+    assert.strictEqual(qrDecoder.extractAndDecodeFromImageData({ width: 100, height: 100, data: blank }), null);
+  });
+
+  // 26. Multi-User Registration, Login, Session Isolation & RLS Record Creation (User A & User B)
+  await runTest(26, 'Multi-User RLS: User A and User B create & read their own private records in complete isolation', async () => {
+    const { MultiUserAuthAndRlsEngine } = loadModule('src/services/authService.ts', 'authService.cjs');
+    const engine = new MultiUserAuthAndRlsEngine();
+
+    const sessionA = await engine.register('user.a@zipqr.test', 'StrongPassA#2026');
+    const sessionB = await engine.register('user.b@zipqr.test', 'StrongPassB#2026');
+
+    assert.notStrictEqual(sessionA.user.id, sessionB.user.id);
+
+    const scanA = wifiParser.parseQRPayload('WIFI:T:WPA2;S:UserA_Private_Office;P:SecretPassA_NeverUploaded;H:true;;');
+    const scanB = wifiParser.parseQRPayload('WIFI:T:SAE;S:UserB_Home_Mesh;P:SecretPassB_NeverUploaded;H:false;;');
+
+    const recA = await engine.insertSyncedScanRecord(scanA, undefined, sessionA.accessToken);
+    const recB = await engine.insertSyncedScanRecord(scanB, undefined, sessionB.accessToken);
+
+    // Verify zero plaintext password or rawPayload is ever stored in server metadata records
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(recA, 'password'), false);
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(recA, 'rawPayload'), false);
+    assert.strictEqual(JSON.stringify(recA).includes('SecretPassA_NeverUploaded'), false);
+
+    // User A reads only User A records
+    const listA = await engine.listSyncedScanHistory(1, 20, sessionA.accessToken);
+    assert.strictEqual(listA.totalCount, 1);
+    assert.strictEqual(listA.items[0].ssid, 'UserA_Private_Office');
+    assert.strictEqual(listA.items[0].user_id, sessionA.user.id);
+
+    // User B reads only User B records
+    const listB = await engine.listSyncedScanHistory(1, 20, sessionB.accessToken);
+    assert.strictEqual(listB.totalCount, 1);
+    assert.strictEqual(listB.items[0].ssid, 'UserB_Home_Mesh');
+    assert.strictEqual(listB.items[0].user_id, sessionB.user.id);
+  });
+
+  // 27. Multi-User Cross-Account Access Prevention & Forged user_id Rejection
+  await runTest(27, 'Multi-User RLS: User A cannot read, modify, or delete User B records; forged user_id & invalid tokens are rejected', async () => {
+    const { MultiUserAuthAndRlsEngine } = loadModule('src/services/authService.ts', 'authService.cjs');
+    const engine = new MultiUserAuthAndRlsEngine();
+
+    const sessionA = await engine.register('alice@zipqr.test', 'AlicePass#2026');
+    const sessionB = await engine.register('bob@zipqr.test', 'BobPass#2026');
+
+    const scanB = wifiParser.parseQRPayload('WIFI:T:WPA2;S:Bob_Vault_Net;P:BobSecret99;H:true;;');
+    const recB = await engine.insertSyncedScanRecord(scanB, undefined, sessionB.accessToken);
+
+    // 1. User A attempting to query with filter user_id = User B gets 0 records due to RLS intersection
+    const crossRead = await engine.listSyncedScanHistory(1, 20, sessionA.accessToken, sessionB.user.id);
+    assert.strictEqual(crossRead.totalCount, 0);
+    assert.strictEqual(crossRead.items.length, 0);
+
+    // 2. User A attempting to delete User B record ID fails and leaves User B record intact
+    const deletedByA = await engine.deleteSyncedScanRecord(recB.id, sessionA.accessToken);
+    assert.strictEqual(deletedByA, false);
+    const checkB = await engine.listSyncedScanHistory(1, 20, sessionB.accessToken);
+    assert.strictEqual(checkB.totalCount, 1);
+
+    // 3. Forged user_id on insert is rejected by RLS WITH CHECK policy
+    let forgedInsertRejected = false;
+    try {
+      await engine.insertSyncedScanRecord(scanB, { forgedUserId: sessionB.user.id }, sessionA.accessToken);
+    } catch (err) {
+      forgedInsertRejected = err.message.includes('RLS Policy Violation');
+    }
+    assert.strictEqual(forgedInsertRejected, true);
+
+    // 4. Forged user_id on settings update is rejected by RLS WITH CHECK policy
+    let forgedSettingsRejected = false;
+    try {
+      await engine.upsertUserSettings({ user_id: sessionB.user.id, language: 'en' }, sessionA.accessToken);
+    } catch (err) {
+      forgedSettingsRejected = err.message.includes('RLS Policy Violation');
+    }
+    assert.strictEqual(forgedSettingsRejected, true);
+
+    // 5. Unauthenticated / invalid token requests are rejected
+    let unauthRejected = false;
+    try {
+      await engine.listSyncedScanHistory(1, 20, 'forged_invalid_token_xyz');
+    } catch (err) {
+      unauthRejected = err.message.includes('Unauthorized');
+    }
+    assert.strictEqual(unauthRejected, true);
+  });
+
+  // 28. Session Logout, Brute-Force Rate Limiting & Account Deletion Cascade
+  await runTest(28, 'Multi-User Security: Logout revokes token access, brute-force logins lock out, and account deletion cascades', async () => {
+    const { MultiUserAuthAndRlsEngine } = loadModule('src/services/authService.ts', 'authService.cjs');
+    const engine = new MultiUserAuthAndRlsEngine();
+
+    const session = await engine.register('charlie@zipqr.test', 'CharliePass#2026');
+    const scan = wifiParser.parseQRPayload('WIFI:T:WPA2;S:Charlie_Net;P:CharlieKey;H:false;;');
+    await engine.insertSyncedScanRecord(scan, undefined, session.accessToken);
+
+    // Logout revokes the access token immediately
+    await engine.logout(session.accessToken);
+    let postLogoutRejected = false;
+    try {
+      await engine.listSyncedScanHistory(1, 20, session.accessToken);
+    } catch (err) {
+      postLogoutRejected = err.message.includes('Unauthorized');
+    }
+    assert.strictEqual(postLogoutRejected, true);
+
+    // Brute-force login protection: 5 wrong password attempts trigger lockout
+    for (let i = 0; i < 5; i++) {
+      try {
+        await engine.login('charlie@zipqr.test', 'WrongPassword123');
+      } catch {}
+    }
+    let lockedOut = false;
+    try {
+      await engine.login('charlie@zipqr.test', 'CharliePass#2026');
+    } catch (err) {
+      lockedOut = err.message.includes('temporarily locked');
+    }
+    assert.strictEqual(lockedOut, true, 'Account must lock after 5 consecutive failed logins');
+
+    // Account deletion removes user and cascades all user_settings and scan_history_metadata rows
+    const sessionD = await engine.register('delete.me@zipqr.test', 'DeletePass#2026');
+    await engine.insertSyncedScanRecord(scan, undefined, sessionD.accessToken);
+    assert.strictEqual((await engine.listSyncedScanHistory(1, 20, sessionD.accessToken)).totalCount, 1);
+
+    await engine.deleteOwnAccount(sessionD.accessToken);
+    let deletedTokenRejected = false;
+    try {
+      await engine.listSyncedScanHistory(1, 20, sessionD.accessToken);
+    } catch (err) {
+      deletedTokenRejected = err.message.includes('Unauthorized');
+    }
+    assert.strictEqual(deletedTokenRejected, true);
+  });
+
+  // 29. Load & Concurrency Simulation (100, 500, and 1,000 Concurrent Users with Strict RLS Isolation)
+  await runTest(29, 'Scalability & Load Test: 100, 500, and 1,000 concurrent users execute auth + RLS queries with 0 cross-account leaks', async () => {
+    const { MultiUserAuthAndRlsEngine } = loadModule('src/services/authService.ts', 'authService.cjs');
+    const engine = new MultiUserAuthAndRlsEngine();
+
+    for (const tier of [100, 500, 1000]) {
+      const tStart = Date.now();
+      const tasks = Array.from({ length: tier }, async (_, idx) => {
+        const email = `loaduser_${tier}_${idx}@zipqr.test`;
+        const sess = await engine.register(email, 'LoadTestPass#2026');
+        const parsed = wifiParser.parseQRPayload(`WIFI:T:WPA2;S:SSID_${tier}_${idx};P:LocalOnlySecret_${idx};H:false;;`);
+        await engine.insertSyncedScanRecord(parsed, undefined, sess.accessToken);
+        const ownHistory = await engine.listSyncedScanHistory(1, 10, sess.accessToken);
+        assert.strictEqual(ownHistory.totalCount, 1);
+        assert.strictEqual(ownHistory.items[0].ssid, `SSID_${tier}_${idx}`);
+        assert.strictEqual(ownHistory.items[0].user_id, sess.user.id);
+      });
+      await Promise.all(tasks);
+      const elapsedMs = Date.now() - tStart;
+      assert.ok(elapsedMs < 15000, `Tier ${tier} took too long: ${elapsedMs}ms`);
+    }
+  });
+
   console.log('==============================================================');
   console.log(`Test Summary: ${passed} passed, ${failed} failed (Total: ${passed + failed})`);
   console.log('==============================================================');

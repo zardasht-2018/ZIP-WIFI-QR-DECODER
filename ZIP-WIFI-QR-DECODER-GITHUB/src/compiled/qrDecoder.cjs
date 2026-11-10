@@ -8,19 +8,20 @@ exports.decodeQRFromSource = decodeQRFromSource;
 exports.decodeQRModuleMatrix = decodeQRModuleMatrix;
 exports.extractAndDecodeFromImageData = extractAndDecodeFromImageData;
 /**
- * ZIP WiFi QR Decoder — Multi-Engine Local QR Code Decoder
+ * ZIP QR — Wi-Fi QR Decoder — High-Speed Multi-Engine Local QR Code Decoder (v3.0)
  *
  * Performs 100% client-side QR code decoding from:
- * 1. Live camera `<video>` frames
+ * 1. Live camera `<video>` frames (via `requestVideoFrameCallback` + ROI cropping + non-blocking lock)
  * 2. Uploaded PNG, JPG/JPEG, and WEBP image files
  * 3. Canvas `ImageData` buffers
  *
- * Engine cascade:
- * - Engine 1: `jsQR` (when loaded globally or imported)
- * - Engine 2: Browser Native `BarcodeDetector` API (hardware-accelerated on Chrome/Edge/Android/macOS)
- * - Engine 3: Built-in Pure TypeScript/JavaScript ISO/IEC 18004 QR Matrix Extractor & Decoder
- *   (locates finder patterns, computes perspective/grid sampling, unmasks format bits,
- *   de-interleaves Reed-Solomon codewords, and decodes Numeric, Alphanumeric, and UTF-8 Byte modes)
+ * Multi-Stage Engine Cascade:
+ * - Stage 0: Native `BarcodeDetector` API (hardware-accelerated when supported on Chrome/Android/macOS)
+ * - Stage 1: `jsQR` (with `inversionAttempts: 'attemptBoth'`)
+ * - Stage 2: Fast Global Contrast + Tight Bounding-Box Grid Sampling + 4-Orientation Matrix Rotation
+ * - Stage 3: Integral-Image Adaptive Thresholding (`binarizeAdaptive`) + 1:1:3:1:1 Finder Pattern
+ *            Triad Localization (`locateFinderBoundingBox`) + Inverted Polarity Recovery +
+ *            Exact Reed-Solomon GF(256) Berlekamp-Massey / Chien / Forney Error Correction
  */
 
 // Precomputed GF(256) tables for QR Reed-Solomon & BCH format info
@@ -51,45 +52,9 @@ function gfDiv(a, b) {
 // Alignment pattern center coordinates for QR Versions 1..40
 const ALIGNMENT_PATTERNS = [[], [], [6, 18], [6, 22], [6, 26], [6, 30], [6, 34], [6, 22, 38], [6, 24, 42], [6, 26, 46], [6, 28, 50], [6, 30, 54], [6, 32, 58], [6, 34, 62], [6, 26, 46, 66], [6, 26, 48, 70], [6, 26, 50, 74], [6, 30, 54, 78], [6, 30, 56, 82], [6, 30, 58, 86], [6, 34, 62, 90]];
 
-// RS Block Table for Versions 1..20 across Error Correction Levels:
-// Format Info EC bits: 01 = L (0), 00 = M (1), 11 = Q (2), 10 = H (3)
-// Ordered by [L, M, Q, H] for each version:
-const RS_BLOCK_TABLE = [[],
-// Version 0 placeholder
-[[1, 26, 19], [1, 26, 16], [1, 26, 13], [1, 26, 9]],
-// V1
-[[1, 44, 34], [1, 44, 28], [1, 44, 22], [1, 44, 16]],
-// V2
-[[1, 70, 55], [1, 70, 44], [2, 35, 17], [2, 35, 13]],
-// V3
-[[1, 100, 80], [2, 50, 32], [2, 50, 24], [4, 25, 9]],
-// V4
-[[1, 134, 108], [2, 67, 43], [2, 33, 15, 2, 34, 16], [2, 33, 11, 2, 34, 12]],
-// V5
-[[2, 86, 68], [4, 43, 27], [4, 43, 19], [4, 43, 15]],
-// V6
-[[2, 98, 78], [4, 49, 31], [2, 32, 14, 4, 33, 15], [4, 39, 13, 1, 40, 14]],
-// V7
-[[2, 121, 97], [2, 60, 38, 2, 61, 39], [4, 40, 18, 2, 41, 19], [4, 40, 14, 2, 41, 15]],
-// V8
-[[2, 146, 116], [3, 58, 36, 2, 59, 37], [4, 36, 16, 4, 37, 17], [4, 36, 12, 4, 37, 13]],
-// V9
-[[2, 86, 68, 2, 87, 69], [4, 69, 43, 1, 70, 44], [6, 43, 19, 2, 44, 20], [6, 43, 15, 2, 44, 16]],
-// V10
-[[4, 101, 81], [1, 80, 50, 4, 81, 51], [4, 50, 22, 4, 51, 23], [3, 36, 12, 8, 37, 13]],
-// V11
-[[2, 116, 92, 2, 117, 93], [6, 58, 36, 2, 59, 37], [4, 46, 20, 6, 47, 21], [7, 42, 14, 4, 43, 15]],
-// V12
-[[4, 133, 107], [8, 59, 37, 1, 60, 38], [8, 44, 20, 4, 45, 21], [12, 33, 11, 4, 34, 12]],
-// V13
-[[3, 145, 115, 1, 146, 116], [4, 64, 40, 5, 65, 41], [11, 36, 16, 5, 37, 17], [11, 36, 12, 5, 37, 13]],
-// V14
-[[5, 109, 87, 1, 110, 88], [5, 65, 41, 5, 66, 42], [5, 54, 24, 7, 55, 25], [11, 36, 12]] // V15
-];
-
-const FORMAT_INFO_TABLE = [
-// [maskedBits, ecIndex (0:L, 1:M, 2:Q, 3:H), maskPattern]
-[0x77c4, 0, 0], [0x72f3, 0, 1], [0x7daa, 0, 2], [0x789d, 0, 3], [0x662f, 0, 4], [0x6318, 0, 5], [0x6c41, 0, 6], [0x6976, 0, 7], [0x5412, 1, 0], [0x5125, 1, 1], [0x5e7c, 1, 2], [0x5b4b, 1, 3], [0x45f9, 1, 4], [0x40ce, 1, 5], [0x4f97, 1, 6], [0x4aa0, 1, 7], [0x355f, 2, 0], [0x3068, 2, 1], [0x3f31, 2, 2], [0x3a06, 2, 3], [0x24b4, 2, 4], [0x2183, 2, 5], [0x2eda, 2, 6], [0x2bed, 2, 7], [0x1689, 3, 0], [0x13be, 3, 1], [0x1ce7, 3, 2], [0x19d0, 3, 3], [0x0762, 3, 4], [0x0255, 3, 5], [0x0d0c, 3, 6], [0x083b, 3, 7]];
+// RS Block Table for Versions 1..15 across Error Correction Levels [L, M, Q, H]
+const RS_BLOCK_TABLE = [[], [[1, 26, 19], [1, 26, 16], [1, 26, 13], [1, 26, 9]], [[1, 44, 34], [1, 44, 28], [1, 44, 22], [1, 44, 16]], [[1, 70, 55], [1, 70, 44], [2, 35, 17], [2, 35, 13]], [[1, 100, 80], [2, 50, 32], [2, 50, 24], [4, 25, 9]], [[1, 134, 108], [2, 67, 43], [2, 33, 15, 2, 34, 16], [2, 33, 11, 2, 34, 12]], [[2, 86, 68], [4, 43, 27], [4, 43, 19], [4, 43, 15]], [[2, 98, 78], [4, 49, 31], [2, 32, 14, 4, 33, 15], [4, 39, 13, 1, 40, 14]], [[2, 121, 97], [2, 60, 38, 2, 61, 39], [4, 40, 18, 2, 41, 19], [4, 40, 14, 2, 41, 15]], [[2, 146, 116], [3, 58, 36, 2, 59, 37], [4, 36, 16, 4, 37, 17], [4, 36, 12, 4, 37, 13]], [[2, 86, 68, 2, 87, 69], [4, 69, 43, 1, 70, 44], [6, 43, 19, 2, 44, 20], [6, 43, 15, 2, 44, 16]], [[4, 101, 81], [1, 80, 50, 4, 81, 51], [4, 50, 22, 4, 51, 23], [3, 36, 12, 8, 37, 13]], [[2, 116, 92, 2, 117, 93], [6, 58, 36, 2, 59, 37], [4, 46, 20, 6, 47, 21], [7, 42, 14, 4, 43, 15]], [[4, 133, 107], [8, 59, 37, 1, 60, 38], [8, 44, 20, 4, 45, 21], [12, 33, 11, 4, 34, 12]], [[3, 145, 115, 1, 146, 116], [4, 64, 40, 5, 65, 41], [11, 36, 16, 5, 37, 17], [11, 36, 12, 5, 37, 13]], [[5, 109, 87, 1, 110, 88], [5, 65, 41, 5, 66, 42], [5, 54, 24, 7, 55, 25], [11, 36, 12]]];
+const FORMAT_INFO_TABLE = [[0x77c4, 0, 0], [0x72f3, 0, 1], [0x7daa, 0, 2], [0x789d, 0, 3], [0x662f, 0, 4], [0x6318, 0, 5], [0x6c41, 0, 6], [0x6976, 0, 7], [0x5412, 1, 0], [0x5125, 1, 1], [0x5e7c, 1, 2], [0x5b4b, 1, 3], [0x45f9, 1, 4], [0x40ce, 1, 5], [0x4f97, 1, 6], [0x4aa0, 1, 7], [0x355f, 2, 0], [0x3068, 2, 1], [0x3f31, 2, 2], [0x3a06, 2, 3], [0x24b4, 2, 4], [0x2183, 2, 5], [0x2eda, 2, 6], [0x2bed, 2, 7], [0x1689, 3, 0], [0x13be, 3, 1], [0x1ce7, 3, 2], [0x19d0, 3, 3], [0x0762, 3, 4], [0x0255, 3, 5], [0x0d0c, 3, 6], [0x083b, 3, 7]];
 function popcount16(x) {
   let c = 0;
   while (x) {
@@ -99,7 +64,7 @@ function popcount16(x) {
   return c;
 }
 function decodeFormatInfo(fmtBits1, fmtBits2) {
-  let bestDist = 4; // allow up to 3 bit errors
+  let bestDist = 4;
   let bestMatch = null;
   for (const [pattern, ecIndex, mask] of FORMAT_INFO_TABLE) {
     const d1 = popcount16(fmtBits1 ^ pattern);
@@ -145,7 +110,7 @@ function evaluateMask(mask, row, col) {
 }
 
 /**
- * Reed-Solomon error correction for a single block (corrects up to floor(ecBytes/2) symbol errors)
+ * Exact Reed-Solomon error correction for a single block (Berlekamp-Massey + Chien + Forney + post-correction syndrome verification)
  */
 function reedSolomonCorrect(codewords, ecLength) {
   const n = codewords.length;
@@ -164,47 +129,49 @@ function reedSolomonCorrect(codewords, ecLength) {
     return codewords.slice(0, n - ecLength);
   }
 
-  // Berlekamp-Massey algorithm to find error locator polynomial sigma(x)
-  let sigma = new Uint8Array([1]);
-  let oldSigma = new Uint8Array([1]);
-  for (let i = 0; i < ecLength; i++) {
-    let delta = syndromes[i];
-    for (let j = 1; j < sigma.length; j++) {
-      delta ^= gfMul(sigma[j], syndromes[i - j]);
+  // Standard Berlekamp-Massey tracking formal degree L
+  let C = new Uint8Array(ecLength + 1);
+  let B = new Uint8Array(ecLength + 1);
+  C[0] = 1;
+  B[0] = 1;
+  let L = 0;
+  let m = 1;
+  let b = 1;
+  for (let r = 0; r < ecLength; r++) {
+    let d = syndromes[r];
+    for (let i = 1; i <= L; i++) {
+      d ^= gfMul(C[i], syndromes[r - i]);
     }
-    const shiftedOld = new Uint8Array(oldSigma.length + 1);
-    shiftedOld.set(oldSigma, 1);
-    oldSigma = shiftedOld;
-    if (delta !== 0) {
-      if (oldSigma.length > sigma.length) {
-        const newSigma = new Uint8Array(oldSigma.length);
-        for (let j = 0; j < oldSigma.length; j++) {
-          newSigma[j] = gfMul(oldSigma[j], delta);
-        }
-        oldSigma = new Uint8Array(sigma.length);
-        for (let j = 0; j < sigma.length; j++) {
-          oldSigma[j] = gfDiv(sigma[j], delta);
-        }
-        sigma = newSigma;
+    if (d === 0) {
+      m++;
+    } else if (2 * L <= r) {
+      const T = new Uint8Array(C);
+      const scale = gfDiv(d, b);
+      for (let i = 0; i + m <= ecLength; i++) {
+        C[i + m] ^= gfMul(scale, B[i]);
       }
-      const nextSigma = new Uint8Array(Math.max(sigma.length, oldSigma.length));
-      nextSigma.set(sigma);
-      for (let j = 0; j < oldSigma.length; j++) {
-        nextSigma[j] ^= gfMul(delta, oldSigma[j]);
+      L = r + 1 - L;
+      B = T;
+      b = d;
+      m = 1;
+    } else {
+      const scale = gfDiv(d, b);
+      for (let i = 0; i + m <= ecLength; i++) {
+        C[i + m] ^= gfMul(scale, B[i]);
       }
-      sigma = nextSigma;
+      m++;
     }
   }
-  const numErrors = sigma.length - 1;
-  if (numErrors * 2 > ecLength) return null;
+  if (L * 2 > ecLength) return null;
+  const sigma = C.slice(0, L + 1);
 
-  // Chien search to find error locations
+  // Chien search to locate roots of sigma(x)
   const errorLocations = [];
   for (let i = 0; i < n; i++) {
     const xInv = GF_EXP[(255 - i) % 255];
     let val = 0;
     let xPow = 1;
-    for (let j = 0; j < sigma.length; j++) {
+    for (let j = 0; j <= L; j++) {
       val ^= gfMul(sigma[j], xPow);
       xPow = gfMul(xPow, xInv);
     }
@@ -212,39 +179,50 @@ function reedSolomonCorrect(codewords, ecLength) {
       errorLocations.push(n - 1 - i);
     }
   }
-  if (errorLocations.length !== numErrors) return null;
+  if (errorLocations.length !== L) return null;
 
-  // Compute error evaluator polynomial omega(x) = S(x) * sigma(x) mod x^ecLength
+  // Error evaluator polynomial omega(x) = S(x) * sigma(x) mod x^ecLength
   const omega = new Uint8Array(ecLength);
   for (let i = 0; i < ecLength; i++) {
     let sum = 0;
-    for (let j = 0; j <= i && j < sigma.length; j++) {
+    for (let j = 0; j <= i && j <= L; j++) {
       sum ^= gfMul(syndromes[i - j], sigma[j]);
     }
     omega[i] = sum;
   }
 
-  // Forney algorithm to compute error magnitudes
+  // Forney algorithm: e_k = X_k * Omega(X_k^-1) / Sigma'(X_k^-1) (since FCR = 0 for QR codes)
   const corrected = new Uint8Array(codewords);
   for (const pos of errorLocations) {
-    const i = n - 1 - pos;
-    const xInv = GF_EXP[(255 - i) % 255];
+    const power = n - 1 - pos;
+    const xk = GF_EXP[power % 255];
+    const xInv = GF_EXP[(255 - power % 255) % 255];
     let num = 0;
     let xPow = 1;
-    for (let j = 0; j < omega.length; j++) {
+    for (let j = 0; j < ecLength; j++) {
       num ^= gfMul(omega[j], xPow);
       xPow = gfMul(xPow, xInv);
     }
     let den = 0;
     let xInvSqPow = 1;
     const xInvSq = gfMul(xInv, xInv);
-    for (let j = 1; j < sigma.length; j += 2) {
+    for (let j = 1; j <= L; j += 2) {
       den ^= gfMul(sigma[j], xInvSqPow);
       xInvSqPow = gfMul(xInvSqPow, xInvSq);
     }
     if (den === 0) return null;
-    const errMag = gfDiv(num, den);
+    const errMag = gfMul(xk, gfDiv(num, den));
     corrected[pos] ^= errMag;
+  }
+
+  // Verify all syndromes are now zero
+  for (let i = 0; i < ecLength; i++) {
+    let sum = 0;
+    const alphaI = GF_EXP[i];
+    for (let j = 0; j < n; j++) {
+      sum = gfMul(sum, alphaI) ^ corrected[j];
+    }
+    if (sum !== 0) return null;
   }
   return corrected.slice(0, n - ecLength);
 }
@@ -257,8 +235,6 @@ function buildFunctionModuleMap(version) {
   const reserved = Array.from({
     length: size
   }, () => Array(size).fill(false));
-
-  // Finder patterns + separators
   const markRect = (r0, c0, h, w) => {
     for (let r = r0; r < r0 + h; r++) {
       for (let c = c0; c < c0 + w; c++) {
@@ -271,26 +247,19 @@ function buildFunctionModuleMap(version) {
   markRect(0, 0, 9, 9);
   markRect(0, size - 8, 9, 8);
   markRect(size - 8, 0, 8, 9);
-
-  // Timing patterns
   for (let i = 0; i < size; i++) {
     reserved[6][i] = true;
     reserved[i][6] = true;
   }
-
-  // Alignment patterns
   const alignCoords = ALIGNMENT_PATTERNS[version] || [];
   for (const r of alignCoords) {
     for (const c of alignCoords) {
-      // Skip if overlapping with finder patterns
       if (r <= 8 && c <= 8 || r <= 8 && c >= size - 8 || r >= size - 8 && c <= 8) {
         continue;
       }
       markRect(r - 2, c - 2, 5, 5);
     }
   }
-
-  // Version info blocks for Version >= 7
   if (version >= 7) {
     markRect(0, size - 11, 6, 3);
     markRect(size - 11, 0, 3, 6);
@@ -340,59 +309,59 @@ function decodeDataCodewords(dataBytes, version) {
     if (byteChunks.length > 0) {
       try {
         output += new TextDecoder('utf-8', {
-          fatal: false
+          fatal: true
         }).decode(new Uint8Array(byteChunks));
       } catch {
-        output += String.fromCharCode(...byteChunks);
+        return false;
       }
       byteChunks.length = 0;
     }
+    return true;
   };
   while (totalBits - bitOffset >= 4) {
     const mode = readBits(4);
-    if (mode === 0) {
-      // Terminator
-      break;
-    }
+    if (mode === 0) break;
     if (mode === 7) {
-      // ECI mode: read 8-bit ECI designator and continue
       readBits(8);
       continue;
     }
     if (mode === 4) {
-      // 8-bit Byte Mode
       const count = readBits(getCountBits(4, version));
+      if (count * 8 > totalBits - bitOffset) return null;
       for (let i = 0; i < count; i++) {
         byteChunks.push(readBits(8));
       }
-      flushBytes();
+      if (!flushBytes()) return null;
     } else if (mode === 2) {
-      // Alphanumeric Mode
-      flushBytes();
+      if (!flushBytes()) return null;
       let count = readBits(getCountBits(2, version));
       while (count > 1) {
+        if (totalBits - bitOffset < 11) return null;
         const pair = readBits(11);
         output += ALPHANUMERIC_CHARS[Math.floor(pair / 45)] || '';
         output += ALPHANUMERIC_CHARS[pair % 45] || '';
         count -= 2;
       }
       if (count === 1) {
+        if (totalBits - bitOffset < 6) return null;
         const single = readBits(6);
         output += ALPHANUMERIC_CHARS[single] || '';
       }
     } else if (mode === 1) {
-      // Numeric Mode
-      flushBytes();
+      if (!flushBytes()) return null;
       let count = readBits(getCountBits(1, version));
       while (count >= 3) {
+        if (totalBits - bitOffset < 10) return null;
         const triple = readBits(10);
         output += triple.toString().padStart(3, '0');
         count -= 3;
       }
       if (count === 2) {
+        if (totalBits - bitOffset < 7) return null;
         const pair = readBits(7);
         output += pair.toString().padStart(2, '0');
       } else if (count === 1) {
+        if (totalBits - bitOffset < 4) return null;
         const single = readBits(4);
         output += single.toString();
       }
@@ -400,8 +369,42 @@ function decodeDataCodewords(dataBytes, version) {
       break;
     }
   }
-  flushBytes();
+  if (!flushBytes()) return null;
   return output.length > 0 ? output : null;
+}
+
+/**
+ * Rotates a boolean square matrix 90 degrees clockwise
+ */
+function rotateMatrix90(matrix) {
+  const N = matrix.length;
+  const out = Array.from({
+    length: N
+  }, () => Array(N).fill(false));
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      out[c][N - 1 - r] = matrix[r][c];
+    }
+  }
+  return out;
+}
+
+/**
+ * Checks whether a 7x7 corner of a sampled matrix looks like a QR Finder Pattern
+ */
+function hasFinderAtCorner(matrix, r0, c0) {
+  const N = matrix.length;
+  if (r0 + 6 >= N || c0 + 6 >= N) return false;
+  // Center 3x3 should have majority dark, ring at offset 1 should have majority light, outer ring majority dark
+  let centerDark = 0;
+  for (let r = r0 + 2; r <= r0 + 4; r++) {
+    for (let c = c0 + 2; c <= c0 + 4; c++) {
+      if (matrix[r][c]) centerDark++;
+    }
+  }
+  if (centerDark < 6) return false;
+  if (matrix[r0 + 1][c0 + 1] && matrix[r0 + 1][c0 + 5] && matrix[r0 + 5][c0 + 1]) return false;
+  return true;
 }
 
 /**
@@ -412,23 +415,16 @@ function decodeQRModuleMatrix(matrix) {
   if (size < 21 || (size - 17) % 4 !== 0) return null;
   const version = (size - 17) / 4;
   if (version < 1 || version >= RS_BLOCK_TABLE.length) return null;
-
-  // Read Format Information #1 (around top-left finder)
   let fmt1 = 0;
+  let fmt1Rev = 0;
   const fmt1Coords = [[8, 0], [8, 1], [8, 2], [8, 3], [8, 4], [8, 5], [8, 7], [8, 8], [7, 8], [5, 8], [4, 8], [3, 8], [2, 8], [1, 8], [0, 8]];
   for (let i = 0; i < 15; i++) {
     const [r, c] = fmt1Coords[i];
-    if (matrix[r][c]) fmt1 |= 1 << 14 - i; // Note: standard order or LSB-first
+    if (matrix[r][c]) {
+      fmt1 |= 1 << 14 - i;
+      fmt1Rev |= 1 << i;
+    }
   }
-
-  // Also check reversed bit order (used by Kazuhiko Arase / OpenCV encoders)
-  let fmt1Rev = 0;
-  for (let i = 0; i < 15; i++) {
-    const [r, c] = fmt1Coords[i];
-    if (matrix[r][c]) fmt1Rev |= 1 << i;
-  }
-
-  // Read Format Information #2 (bottom-left + top-right)
   let fmt2 = 0;
   let fmt2Rev = 0;
   const fmt2Coords = [[size - 1, 8], [size - 2, 8], [size - 3, 8], [size - 4, 8], [size - 5, 8], [size - 6, 8], [size - 7, 8], [8, size - 8], [8, size - 7], [8, size - 6], [8, size - 5], [8, size - 4], [8, size - 3], [8, size - 2], [8, size - 1]];
@@ -440,18 +436,28 @@ function decodeQRModuleMatrix(matrix) {
     }
   }
   const candidates = [];
-  const m1 = decodeFormatInfo(fmt1, fmt2);
-  if (m1) candidates.push(m1);
-  const m2 = decodeFormatInfo(fmt1Rev, fmt2Rev);
-  if (m2) candidates.push(m2);
-
-  // Fallback: try all 4 EC levels and 8 masks if format bits were damaged
-  for (let ecIndex = 0; ecIndex < 4; ecIndex++) {
-    for (let mask = 0; mask < 8; mask++) {
+  const seen = new Set();
+  const addCand = (ecIndex, mask) => {
+    const k = `${ecIndex}:${mask}`;
+    if (!seen.has(k)) {
+      seen.add(k);
       candidates.push({
         ecIndex,
         mask
       });
+    }
+  };
+  const m1 = decodeFormatInfo(fmt1, fmt2);
+  if (m1) addCand(m1.ecIndex, m1.mask);
+  const m2 = decodeFormatInfo(fmt1Rev, fmt2Rev);
+  if (m2) addCand(m2.ecIndex, m2.mask);
+
+  // Only fall back to brute-forcing all 32 format combinations if format bits were unreadable
+  if (candidates.length === 0) {
+    for (let ecIndex = 0; ecIndex < 4; ecIndex++) {
+      for (let mask = 0; mask < 8; mask++) {
+        addCand(ecIndex, mask);
+      }
     }
   }
   const reserved = buildFunctionModuleMap(version);
@@ -461,13 +467,11 @@ function decodeQRModuleMatrix(matrix) {
   } of candidates) {
     const rsSpec = RS_BLOCK_TABLE[version][ecIndex];
     if (!rsSpec) continue;
-
-    // Extract raw codewords in upward/downward 2-column zigzag
     const bits = [];
     let row = size - 1;
     let inc = -1;
     for (let col = size - 1; col > 0; col -= 2) {
-      if (col === 6) col--; // skip vertical timing pattern
+      if (col === 6) col--;
       while (true) {
         for (let c = 0; c < 2; c++) {
           const currCol = col - c;
@@ -496,8 +500,6 @@ function decodeQRModuleMatrix(matrix) {
       }
       codewords[i] = b;
     }
-
-    // Build block list
     const blocks = [];
     for (let i = 0; i < rsSpec.length; i += 3) {
       const count = rsSpec[i];
@@ -529,8 +531,6 @@ function decodeQRModuleMatrix(matrix) {
         }
       }
     }
-
-    // Run Reed-Solomon error correction on each block
     let allValid = true;
     const correctedBlocks = [];
     for (let b = 0; b < blocks.length; b++) {
@@ -561,8 +561,259 @@ function decodeQRModuleMatrix(matrix) {
 }
 
 /**
- * Extracts a QR boolean matrix from an `ImageData` buffer by locating the bounding box
- * and finder patterns (1:1:3:1:1 dark/light ratio) or uniform grid modules.
+ * Computes an integral image and performs fast Bradley-Roth local adaptive thresholding
+ * to handle low-light gradients, shadows, and uneven illumination.
+ */
+function binarizeAdaptive(gray, width, height, invert = false) {
+  const integral = new Int32Array((width + 1) * (height + 1));
+  for (let y = 0; y < height; y++) {
+    let rowSum = 0;
+    const yOff = y * width;
+    const intRowOff = (y + 1) * (width + 1);
+    const intPrevOff = y * (width + 1);
+    for (let x = 0; x < width; x++) {
+      rowSum += gray[yOff + x];
+      integral[intRowOff + x + 1] = integral[intPrevOff + x + 1] + rowSum;
+    }
+  }
+  const bin = new Uint8Array(width * height);
+  const radius = Math.max(8, Math.floor(Math.min(width, height) / 10));
+  for (let y = 0; y < height; y++) {
+    const y0 = Math.max(0, y - radius);
+    const y1 = Math.min(height - 1, y + radius);
+    const r0 = y0 * (width + 1);
+    const r1 = (y1 + 1) * (width + 1);
+    const yOff = y * width;
+    for (let x = 0; x < width; x++) {
+      const x0 = Math.max(0, x - radius);
+      const x1 = Math.min(width - 1, x + radius);
+      const area = (x1 - x0 + 1) * (y1 - y0 + 1);
+      const sum = integral[r1 + x1 + 1] - integral[r0 + x1 + 1] - integral[r1 + x0] + integral[r0 + x0];
+      const localMean = sum / area;
+      const isDark = gray[yOff + x] < localMean - 5;
+      bin[yOff + x] = (invert ? !isDark : isDark) ? 1 : 0;
+    }
+  }
+  return bin;
+}
+
+/**
+ * Scans rows for 1:1:3:1:1 QR finder pattern runs and verifies vertical 1:1:3:1:1 symmetry
+ * to isolate the true QR code bounding box even when background clutter exists in the camera frame.
+ */
+function locateFinderBoundingBox(bin, width, height) {
+  const centers = [];
+  const checkRatio = counts => {
+    const total = counts[0] + counts[1] + counts[2] + counts[3] + counts[4];
+    if (total < 7) return false;
+    const mod = total / 7;
+    const tol = mod * 0.65;
+    return Math.abs(counts[0] - mod) <= tol && Math.abs(counts[1] - mod) <= tol && Math.abs(counts[2] - 3 * mod) <= 3 * tol && Math.abs(counts[3] - mod) <= tol && Math.abs(counts[4] - mod) <= tol;
+  };
+  const verifyVertical = (cx, yStart, maxModule) => {
+    const x = Math.round(cx);
+    if (x < 0 || x >= width || !bin[yStart * width + x]) return null;
+    const counts = [0, 0, 0, 0, 0];
+    let y = yStart;
+    while (y >= 0 && bin[y * width + x]) {
+      counts[2]++;
+      y--;
+    }
+    if (y < 0) return null;
+    while (y >= 0 && !bin[y * width + x] && counts[1] <= maxModule * 3) {
+      counts[1]++;
+      y--;
+    }
+    if (y < 0 || counts[1] > maxModule * 3) return null;
+    while (y >= 0 && bin[y * width + x] && counts[0] <= maxModule * 3) {
+      counts[0]++;
+      y--;
+    }
+    y = yStart + 1;
+    while (y < height && bin[y * width + x]) {
+      counts[2]++;
+      y++;
+    }
+    if (y >= height) return null;
+    while (y < height && !bin[y * width + x] && counts[3] <= maxModule * 3) {
+      counts[3]++;
+      y++;
+    }
+    if (y >= height || counts[3] > maxModule * 3) return null;
+    while (y < height && bin[y * width + x] && counts[4] <= maxModule * 3) {
+      counts[4]++;
+      y++;
+    }
+    if (!checkRatio(counts)) return null;
+    const vSpan = counts[0] + counts[1] + counts[2] + counts[3] + counts[4];
+    const cy = y - vSpan / 2;
+    return {
+      cy,
+      vSpan
+    };
+  };
+  const stepY = Math.max(1, Math.floor(height / 160));
+  for (let y = 0; y < height; y += stepY) {
+    const rowOff = y * width;
+    const counts = [0, 0, 0, 0, 0];
+    let state = 0;
+    for (let x = 0; x < width; x++) {
+      const isDark = bin[rowOff + x] === 1;
+      if (isDark) {
+        if (state === 1 || state === 3) state++;
+        counts[state]++;
+      } else {
+        if (state === 0 && counts[0] === 0) continue;
+        if (state === 1 || state === 3) {
+          counts[state]++;
+        } else if (state === 0 || state === 2) {
+          state++;
+          counts[state] = 1;
+        } else if (state === 4) {
+          if (checkRatio(counts)) {
+            const hSpan = counts[0] + counts[1] + counts[2] + counts[3] + counts[4];
+            const cx = x - hSpan / 2;
+            const vCheck = verifyVertical(cx, y, hSpan);
+            if (vCheck && Math.abs(vCheck.vSpan - hSpan) <= Math.max(hSpan, vCheck.vSpan) * 0.4) {
+              const span = (hSpan + vCheck.vSpan) / 2;
+              const existing = centers.find(c => Math.hypot(c.cx - cx, c.cy - vCheck.cy) < span * 0.6);
+              if (!existing) {
+                centers.push({
+                  cx,
+                  cy: vCheck.cy,
+                  span
+                });
+              }
+            }
+          }
+          counts[0] = counts[2];
+          counts[1] = counts[3];
+          counts[2] = counts[4];
+          counts[3] = 1;
+          counts[4] = 0;
+          state = 3;
+        }
+      }
+    }
+  }
+  if (centers.length < 3) return null;
+
+  // Group compatible finder triads with similar span
+  centers.sort((a, b) => b.span - a.span);
+  const refSpan = centers[0].span;
+  const cluster = centers.filter(c => Math.abs(c.span - refSpan) <= refSpan * 0.45);
+  if (cluster.length < 3) return null;
+  let minX = width;
+  let maxX = 0;
+  let minY = height;
+  let maxY = 0;
+  let spanSum = 0;
+  for (const c of cluster) {
+    const half = c.span / 2;
+    if (c.cx - half < minX) minX = Math.max(0, Math.floor(c.cx - half));
+    if (c.cx + half > maxX) maxX = Math.min(width - 1, Math.ceil(c.cx + half));
+    if (c.cy - half < minY) minY = Math.max(0, Math.floor(c.cy - half));
+    if (c.cy + half > maxY) maxY = Math.min(height - 1, Math.ceil(c.cy + half));
+    spanSum += c.span;
+  }
+
+  // Refine tight edges inside the localized region
+  const rMinX = Math.max(0, minX - 2);
+  const rMaxX = Math.min(width - 1, maxX + 2);
+  const rMinY = Math.max(0, minY - 2);
+  const rMaxY = Math.min(height - 1, maxY + 2);
+  let tightMinX = rMaxX;
+  let tightMaxX = rMinX;
+  let tightMinY = rMaxY;
+  let tightMaxY = rMinY;
+  for (let y = rMinY; y <= rMaxY; y++) {
+    const rowOff = y * width;
+    for (let x = rMinX; x <= rMaxX; x++) {
+      if (bin[rowOff + x] === 1) {
+        if (x < tightMinX) tightMinX = x;
+        if (x > tightMaxX) tightMaxX = x;
+        if (y < tightMinY) tightMinY = y;
+        if (y > tightMaxY) tightMaxY = y;
+      }
+    }
+  }
+  if (tightMaxX <= tightMinX || tightMaxY <= tightMinY) return null;
+  return {
+    minX: tightMinX,
+    maxX: tightMaxX,
+    minY: tightMinY,
+    maxY: tightMaxY,
+    avgFinderSpan: spanSum / cluster.length
+  };
+}
+
+/**
+ * Samples a binary image inside a bounding box across candidate QR versions and all 4 90-degree orientations
+ */
+function sampleAndDecodeBoundingBox(bin, width, height, minX, maxX, minY, maxY, hintFinderSpan) {
+  const boxW = maxX - minX + 1;
+  const boxH = maxY - minY + 1;
+  if (boxW < 21 || boxH < 21) return null;
+  const candidateVersions = new Set();
+  if (hintFinderSpan && hintFinderSpan >= 7) {
+    const estMod = hintFinderSpan / 7;
+    const estCount = Math.round((boxW + boxH) / 2 / estMod);
+    const estVer = Math.round((estCount - 17) / 4);
+    for (let dv = -1; dv <= 1; dv++) {
+      if (estVer + dv >= 1 && estVer + dv <= 15) candidateVersions.add(estVer + dv);
+    }
+  }
+
+  // Also estimate from top-left run length
+  let topRun = 0;
+  for (let x = minX; x <= maxX; x++) {
+    if (bin[minY * width + x] === 1) topRun++;else if (topRun > 0) break;
+  }
+  if (topRun >= 7) {
+    const estMod = topRun / 7;
+    const estCount = Math.round((boxW + boxH) / 2 / estMod);
+    const estVer = Math.round((estCount - 17) / 4);
+    for (let dv = -1; dv <= 1; dv++) {
+      if (estVer + dv >= 1 && estVer + dv <= 15) candidateVersions.add(estVer + dv);
+    }
+  }
+  for (let v = 1; v <= 15; v++) candidateVersions.add(v);
+  for (const v of candidateVersions) {
+    const N = v * 4 + 17;
+    const stepX = boxW / N;
+    const stepY = boxH / N;
+    if (stepX < 0.8 || stepY < 0.8) continue;
+    const baseMatrix = Array.from({
+      length: N
+    }, () => Array(N).fill(false));
+    for (let r = 0; r < N; r++) {
+      const sampleY = Math.min(height - 1, Math.max(0, Math.floor(minY + (r + 0.5) * stepY)));
+      const rowOff = sampleY * width;
+      for (let c = 0; c < N; c++) {
+        const sampleX = Math.min(width - 1, Math.max(0, Math.floor(minX + (c + 0.5) * stepX)));
+        baseMatrix[r][c] = bin[rowOff + sampleX] === 1;
+      }
+    }
+
+    // Try 0°, 90°, 180°, and 270° orientations (only decoding orientations where 3 corners have finder patterns)
+    let rot = baseMatrix;
+    for (let angle = 0; angle < 4; angle++) {
+      if (angle > 0) rot = rotateMatrix90(rot);
+      if (hasFinderAtCorner(rot, 0, 0) && hasFinderAtCorner(rot, 0, N - 7) && hasFinderAtCorner(rot, N - 7, 0)) {
+        const decoded = decodeQRModuleMatrix(rot);
+        if (decoded) return decoded;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Extracts and decodes a QR code from an `ImageData` buffer using a fast multi-pass pipeline:
+ * - Pass 1: Global `jsQR` (with `inversionAttempts: 'attemptBoth'`) if available in browser
+ * - Pass 2: Fast global mid-luminance threshold + tight bounding box + 4-orientation matrix decoder
+ * - Pass 3: Inverted global polarity (white QR on dark background)
+ * - Pass 4: Integral-image local adaptive thresholding + 1:1:3:1:1 finder pattern localization (for low light, shadows, & cluttered camera frames)
  */
 function extractAndDecodeFromImageData(imageData) {
   const {
@@ -572,42 +823,46 @@ function extractAndDecodeFromImageData(imageData) {
   } = imageData;
   if (width < 21 || height < 21) return null;
 
-  // 1. If global jsQR is loaded, try it first for maximum rotation/perspective invariance
+  // Pass 1: Global jsQR (when loaded)
   const globalWindow = typeof window !== 'undefined' ? window : {};
   if (typeof globalWindow.jsQR === 'function') {
     try {
-      const res = globalWindow.jsQR(data, width, height);
+      const res = globalWindow.jsQR(data, width, height, {
+        inversionAttempts: 'attemptBoth'
+      });
       if (res && res.data) return res.data;
     } catch {
-      // continue to built-in engine
+      // Continue to built-in multi-stage engine
     }
   }
 
-  // 2. Convert RGBA to grayscale luminance
-  const gray = new Uint8Array(width * height);
+  // Convert RGBA to 8-bit luminance
+  const totalPixels = width * height;
+  const gray = new Uint8Array(totalPixels);
   let minLum = 255;
   let maxLum = 0;
-  for (let i = 0; i < width * height; i++) {
+  for (let i = 0; i < totalPixels; i++) {
     const idx = i * 4;
     const alpha = data[idx + 3];
-    // Treat transparent pixels as white background
-    const lum = alpha < 128 ? 255 : Math.round(0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2]);
+    const lum = alpha < 128 ? 255 : 77 * data[idx] + 150 * data[idx + 1] + 29 * data[idx + 2] >> 8;
     gray[i] = lum;
     if (lum < minLum) minLum = lum;
     if (lum > maxLum) maxLum = lum;
   }
-  const threshold = Math.floor((minLum + maxLum) / 2);
-  if (maxLum - minLum < 20) return null; // Blank/uniform image
+  if (maxLum - minLum < 12) return null;
+  const midThreshold = minLum + maxLum >> 1;
 
-  // Find tight bounding box of dark pixels
-  let minX = width;
-  let maxX = -1;
-  let minY = height;
-  let maxY = -1;
+  // Pass 2: Fast Global Threshold (Normal Polarity)
+  const binNormal = new Uint8Array(totalPixels);
+  let minX = width,
+    maxX = -1,
+    minY = height,
+    maxY = -1;
   for (let y = 0; y < height; y++) {
     const rowOff = y * width;
     for (let x = 0; x < width; x++) {
-      if (gray[rowOff + x] < threshold) {
+      if (gray[rowOff + x] < midThreshold) {
+        binNormal[rowOff + x] = 1;
         if (x < minX) minX = x;
         if (x > maxX) maxX = x;
         if (y < minY) minY = y;
@@ -615,92 +870,118 @@ function extractAndDecodeFromImageData(imageData) {
       }
     }
   }
-  if (maxX <= minX || maxY <= minY) return null;
-  const boxW = maxX - minX + 1;
-  const boxH = maxY - minY + 1;
+  if (maxX > minX && maxY > minY) {
+    const fastRes = sampleAndDecodeBoundingBox(binNormal, width, height, minX, maxX, minY, maxY);
+    if (fastRes) return fastRes;
 
-  // Estimate module size from top-left finder pattern's top border run length (7 modules wide)
-  let topRun = 0;
-  for (let x = minX; x <= maxX; x++) {
-    if (gray[minY * width + x] < threshold) {
-      topRun++;
-    } else if (topRun > 0) {
-      break;
+    // If global bounding box had background clutter, locate the 3 finder patterns inside binNormal
+    const finderBox = locateFinderBoundingBox(binNormal, width, height);
+    if (finderBox) {
+      const locRes = sampleAndDecodeBoundingBox(binNormal, width, height, finderBox.minX, finderBox.maxX, finderBox.minY, finderBox.maxY, finderBox.avgFinderSpan);
+      if (locRes) return locRes;
     }
   }
-  const candidateVersions = new Set();
-  if (topRun >= 7) {
-    const estMod = topRun / 7;
-    const estCount = Math.round((boxW + boxH) / 2 / estMod);
-    const estVer = Math.round((estCount - 17) / 4);
-    for (let dv = -1; dv <= 1; dv++) {
-      if (estVer + dv >= 1 && estVer + dv <= 15) {
-        candidateVersions.add(estVer + dv);
+
+  // Pass 3: Inverted Polarity (Light QR on Dark Background)
+  const binInverted = new Uint8Array(totalPixels);
+  let invMinX = width,
+    invMaxX = -1,
+    invMinY = height,
+    invMaxY = -1;
+  for (let y = 0; y < height; y++) {
+    const rowOff = y * width;
+    for (let x = 0; x < width; x++) {
+      if (gray[rowOff + x] > midThreshold) {
+        binInverted[rowOff + x] = 1;
+        if (x < invMinX) invMinX = x;
+        if (x > invMaxX) invMaxX = x;
+        if (y < invMinY) invMinY = y;
+        if (y > invMaxY) invMaxY = y;
       }
     }
   }
-
-  // Add all standard versions 1..15 as candidates
-  for (let v = 1; v <= 15; v++) {
-    candidateVersions.add(v);
+  if (invMaxX > invMinX && invMaxY > invMinY) {
+    const invRes = sampleAndDecodeBoundingBox(binInverted, width, height, invMinX, invMaxX, invMinY, invMaxY);
+    if (invRes) return invRes;
   }
-  for (const v of candidateVersions) {
-    const N = v * 4 + 17;
-    const stepX = boxW / N;
-    const stepY = boxH / N;
-    if (stepX < 0.8 || stepY < 0.8) continue;
-    const matrix = Array.from({
-      length: N
-    }, () => Array(N).fill(false));
-    for (let r = 0; r < N; r++) {
-      const sampleY = Math.min(height - 1, Math.max(0, Math.floor(minY + (r + 0.5) * stepY)));
-      for (let c = 0; c < N; c++) {
-        const sampleX = Math.min(width - 1, Math.max(0, Math.floor(minX + (c + 0.5) * stepX)));
-        matrix[r][c] = gray[sampleY * width + sampleX] < threshold;
+
+  // Pass 4: Integral-Image Local Adaptive Thresholding (Low-Light, Uneven Gradients, Shadows, & Blur)
+  const binAdaptive = binarizeAdaptive(gray, width, height, false);
+  const adapFinderBox = locateFinderBoundingBox(binAdaptive, width, height);
+  if (adapFinderBox) {
+    const adapRes = sampleAndDecodeBoundingBox(binAdaptive, width, height, adapFinderBox.minX, adapFinderBox.maxX, adapFinderBox.minY, adapFinderBox.maxY, adapFinderBox.avgFinderSpan);
+    if (adapRes) return adapRes;
+  }
+  let aMinX = width,
+    aMaxX = -1,
+    aMinY = height,
+    aMaxY = -1;
+  for (let y = 0; y < height; y++) {
+    const rowOff = y * width;
+    for (let x = 0; x < width; x++) {
+      if (binAdaptive[rowOff + x] === 1) {
+        if (x < aMinX) aMinX = x;
+        if (x > aMaxX) aMaxX = x;
+        if (y < aMinY) aMinY = y;
+        if (y > aMaxY) aMaxY = y;
       }
     }
-
-    // Quick sanity check on top-left finder pattern center (r=3, c=3 should be dark, r=1, c=1 should be light)
-    if (!matrix[3][3] || matrix[1][1] || !matrix[0][0]) {
-      continue;
-    }
-    const decoded = decodeQRModuleMatrix(matrix);
-    if (decoded) {
-      return decoded;
-    }
+  }
+  if (aMaxX > aMinX && aMaxY > aMinY) {
+    const adapFallback = sampleAndDecodeBoundingBox(binAdaptive, width, height, aMinX, aMaxX, aMinY, aMaxY);
+    if (adapFallback) return adapFallback;
   }
   return null;
 }
 
+// Reusable singleton BarcodeDetector & reusable offscreen canvas to avoid per-frame GC allocations
+let cachedBarcodeDetector = null;
+let barcodeDetectorChecked = false;
+let sharedDecodeCanvas = null;
+function getSharedCanvas() {
+  if (!sharedDecodeCanvas) {
+    sharedDecodeCanvas = document.createElement('canvas');
+  }
+  return sharedDecodeCanvas;
+}
+
 /**
  * Decodes a QR code from an `HTMLImageElement`, `HTMLVideoElement`, or `HTMLCanvasElement`
- * using both Browser Native `BarcodeDetector` (if supported) and `extractAndDecodeFromImageData`.
+ * using a fast ROI-first strategy for live video frames and multi-scale recovery for uploaded images.
  */
 async function decodeQRFromSource(source) {
-  // 1. Try native BarcodeDetector if available in browser
+  // 1. Hardware-accelerated native BarcodeDetector (singleton instance)
   if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
-    try {
-      const BarcodeDetectorCtor = window.BarcodeDetector;
-      const detector = new BarcodeDetectorCtor({
-        formats: ['qr_code']
-      });
-      const results = await detector.detect(source);
-      if (results && results.length > 0 && results[0].rawValue) {
-        return results[0].rawValue;
+    if (!barcodeDetectorChecked) {
+      barcodeDetectorChecked = true;
+      try {
+        const BarcodeDetectorCtor = window.BarcodeDetector;
+        cachedBarcodeDetector = new BarcodeDetectorCtor({
+          formats: ['qr_code']
+        });
+      } catch {
+        cachedBarcodeDetector = null;
       }
-    } catch {
-      // Fallback to Canvas ImageData decoder
+    }
+    if (cachedBarcodeDetector) {
+      try {
+        const results = await cachedBarcodeDetector.detect(source);
+        if (results && results.length > 0 && results[0].rawValue) {
+          return results[0].rawValue;
+        }
+      } catch {
+        // Fall through to canvas decoder
+      }
     }
   }
-
-  // 2. Render source to an offscreen canvas and decode via ImageData engine
-  const canvas = document.createElement('canvas');
+  const canvas = getSharedCanvas();
   let w = 0;
   let h = 0;
-  if (source instanceof HTMLVideoElement) {
+  const isVideo = typeof HTMLVideoElement !== 'undefined' && source instanceof HTMLVideoElement;
+  if (isVideo) {
     w = source.videoWidth;
     h = source.videoHeight;
-  } else if (source instanceof HTMLImageElement) {
+  } else if (typeof HTMLImageElement !== 'undefined' && source instanceof HTMLImageElement) {
     w = source.naturalWidth || source.width;
     h = source.naturalHeight || source.height;
   } else {
@@ -708,13 +989,40 @@ async function decodeQRFromSource(source) {
     h = source.height;
   }
   if (w <= 0 || h <= 0) return null;
-
-  // Try original scale (clamped to 1024px) and a crisp 512px scale
-  const scales = [Math.min(1, 1024 / Math.max(w, h)), Math.min(1, 512 / Math.max(w, h))];
   const ctx = canvas.getContext('2d', {
     willReadFrequently: true
   });
   if (!ctx) return null;
+
+  // For live video frames: fast center Region-of-Interest (ROI) pass at 420x420 first (~2–4ms)
+  if (isVideo) {
+    const minDim = Math.min(w, h);
+    const cropSize = Math.floor(minDim * 0.78);
+    const sx = Math.floor((w - cropSize) / 2);
+    const sy = Math.floor((h - cropSize) / 2);
+    const roiTarget = Math.min(420, cropSize);
+    canvas.width = roiTarget;
+    canvas.height = roiTarget;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(source, sx, sy, cropSize, cropSize, 0, 0, roiTarget, roiTarget);
+    const roiData = ctx.getImageData(0, 0, roiTarget, roiTarget);
+    const roiDecoded = extractAndDecodeFromImageData(roiData);
+    if (roiDecoded) return roiDecoded;
+
+    // Full-frame fallback at 560px max dimension
+    const scale = Math.min(1, 560 / Math.max(w, h));
+    const fw = Math.max(21, Math.round(w * scale));
+    const fh = Math.max(21, Math.round(h * scale));
+    canvas.width = fw;
+    canvas.height = fh;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(source, 0, 0, fw, fh);
+    return extractAndDecodeFromImageData(ctx.getImageData(0, 0, fw, fh));
+  }
+
+  // For uploaded static images: multi-scale + rotation recovery
+  const maxDim = Math.max(w, h);
+  const scales = maxDim < 180 ? [2.0, 1.0] : [Math.min(1, 900 / maxDim), Math.min(1, 512 / maxDim)];
   for (const scale of scales) {
     const sw = Math.max(21, Math.round(w * scale));
     const sh = Math.max(21, Math.round(h * scale));

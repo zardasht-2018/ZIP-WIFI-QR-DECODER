@@ -35,6 +35,9 @@
             <span data-i18n="navHistory">مێژوو</span>
             <span id="navHistoryBadge" dir="ltr" class="ms-1 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] text-sky-300">0</span>
           </button>
+          <button type="button" data-nav="account" class="nav-tab rounded-xl px-2.5 py-2 text-xs font-bold transition-all sm:px-3.5">
+            <span data-i18n="navAccount">هەژمار</span>
+          </button>
           <button type="button" data-nav="settings" class="nav-tab rounded-xl px-2.5 py-2 text-xs font-bold transition-all sm:px-3.5">
             <span data-i18n="navSettings">ڕێکخستنەکان</span>
           </button>
@@ -430,6 +433,98 @@
       </div>
 
       <div id="historyListContainer" class="space-y-3"></div>
+    </section>
+
+    <!-- ==================== PAGE 5B: ACCOUNT & MULTI-USER RLS SYNC ==================== -->
+    <section id="page-account" class="hidden mx-auto max-w-4xl space-y-6">
+      <div class="flex flex-col justify-between gap-4 rounded-3xl border border-slate-800 zip-surface p-6 sm:flex-row sm:items-center">
+        <div>
+          <h1 data-i18n="accountTitle" class="text-2xl font-black text-white">هەژماری بەکارهێنەر و هاوکاتکردنی تایبەت</h1>
+          <p data-i18n="accountSubtitle" class="mt-1 text-xs text-slate-400">سکانکردنی QR بەبێ هەژمار بەردەستە. هەژمار تەنها بۆ هاوکاتکردنی تایبەت و پارێزراوی مێژووی سکانە (بەبێ ناردنی تێپەڕەوشەی وای-فای).</p>
+        </div>
+        <div class="shrink-0">
+          <span id="accountStatusBadge" class="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-3.5 py-2 text-xs font-bold text-slate-300">
+            <span id="accountStatusDot" class="h-2 w-2 rounded-full bg-sky-400"></span>
+            <span id="accountStatusText" data-i18n="accountStatusGuest">دۆخی میوان (تەنها ناوخۆیی)</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- RLS & Zero-Password Privacy Notice -->
+      <div class="rounded-3xl border border-sky-500/30 bg-gradient-to-br from-[#0c1428] to-[#080d1a] p-5">
+        <h2 data-i18n="accountPrivacyNoticeTitle" class="text-xs font-bold uppercase tracking-wider text-sky-300">پاراستنی داتای تایبەت (RLS) و سیاسەتی بێ تێپەڕەوشە</h2>
+        <p data-i18n="accountPrivacyNoticeDesc" class="mt-1.5 text-xs leading-relaxed text-slate-300">تێپەڕەوشەی وای-فای و دەقی نهێنی QR هەرگیز بۆ سێرڤەر نانێردرێن. تەنها زانیاری گشتی (کاتی سکان، جۆری پاراستن، و ناوی تۆڕ ئەگەر چالاک بێت) بە جیاکراوەیی بۆ هەژماری خۆت هەڵدەگیرێت.</p>
+      </div>
+
+      <!-- Guest Auth Card (Sign In / Register / Reset) -->
+      <div id="accountGuestFormCard" class="rounded-3xl border border-slate-800 zip-surface p-6">
+        <div class="flex flex-wrap gap-2 border-b border-slate-800 pb-4">
+          <button id="authTabLoginBtn" type="button" data-auth-tab="login" data-i18n="accountLoginTab" class="auth-tab-btn zip-gradient-btn rounded-xl px-4 py-2 text-xs font-bold text-white transition">چوونەژوورەوە</button>
+          <button id="authTabRegisterBtn" type="button" data-auth-tab="register" data-i18n="accountRegisterTab" class="auth-tab-btn rounded-xl bg-slate-800/80 px-4 py-2 text-xs font-bold text-slate-300 hover:text-white transition">تۆمارکردنی هەژمار</button>
+          <button id="authTabResetBtn" type="button" data-auth-tab="reset" data-i18n="accountResetTab" class="auth-tab-btn rounded-xl bg-slate-800/80 px-4 py-2 text-xs font-bold text-slate-300 hover:text-white transition">گەڕاندنەوەی تێپەڕەوشە</button>
+        </div>
+
+        <div id="accountErrorBanner" class="hidden mt-4 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-xs font-semibold text-rose-300"></div>
+
+        <div class="mt-5 max-w-md space-y-4">
+          <div>
+            <label data-i18n="accountEmailLabel" class="block text-xs font-bold text-slate-300">ناونیشانی ئیمەیڵ</label>
+            <input id="accountEmailInput" type="email" dir="ltr" data-i18n-placeholder="accountEmailPlaceholder" placeholder="user@example.com" class="font-mono-code mt-1.5 w-full rounded-xl border border-slate-700 bg-[#050811] px-4 py-3 text-left text-xs text-white focus:border-sky-400 focus:outline-none" />
+          </div>
+
+          <div id="accountPasswordRow">
+            <label data-i18n="accountPasswordLabel" class="block text-xs font-bold text-slate-300">تێپەڕەوشە (لانیکەم ٨ پیت)</label>
+            <input id="accountPasswordInput" type="password" dir="ltr" data-i18n-placeholder="accountPasswordPlaceholder" placeholder="••••••••" class="font-mono-code mt-1.5 w-full rounded-xl border border-slate-700 bg-[#050811] px-4 py-3 text-left text-xs text-white focus:border-sky-400 focus:outline-none" />
+          </div>
+
+          <button id="accountSubmitAuthBtn" type="button" data-i18n="btnSignIn" class="zip-gradient-btn rounded-xl px-6 py-3.5 text-xs font-black uppercase tracking-wider text-white transition hover:brightness-110">
+            چوونەژوورەوە
+          </button>
+        </div>
+      </div>
+
+      <!-- Authenticated User Dashboard Card -->
+      <div id="accountAuthenticatedWrap" class="hidden space-y-6">
+        <div class="rounded-3xl border border-slate-800 zip-surface p-6 space-y-4">
+          <div class="flex items-center justify-between gap-4 rounded-2xl border border-slate-800 zip-card p-4">
+            <div>
+              <div data-i18n="accountSyncSsidLabel" class="text-sm font-bold text-white">هاوکاتکردنی ناوی تۆڕ (SSID) لە مێژووی هەژماردا</div>
+              <div id="accountUidDisplay" dir="ltr" class="font-mono-code mt-0.5 text-xs text-slate-400"></div>
+            </div>
+            <input id="accountSyncSsidCheckbox" type="checkbox" checked class="h-5 w-5 shrink-0 accent-sky-500" />
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3">
+            <button id="accountSignOutBtn" type="button" data-i18n="btnSignOut" class="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-xs font-bold uppercase text-slate-200 hover:bg-slate-700">
+              چوونەدەرەوە
+            </button>
+            <div id="accountSignOutConfirmBox" class="hidden flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-2">
+              <span data-i18n="btnConfirmSignOut" class="text-xs text-amber-200">دڵنیایت لە چوونەدەرەوە لە هەژمارەکەت؟</span>
+              <button id="accountConfirmSignOutBtn" type="button" data-i18n="btnSignOut" class="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-black">چوونەدەرەوە</button>
+              <button id="accountCancelSignOutBtn" type="button" data-i18n="btnCancel" class="rounded-lg bg-slate-800 px-3 py-1.5 text-xs text-slate-300">پاشگەزبوونەوە</button>
+            </div>
+
+            <button id="accountDeleteBtn" type="button" data-i18n="btnDeleteAccount" class="rounded-xl border border-rose-500/40 bg-rose-500/15 px-4 py-2.5 text-xs font-bold uppercase text-rose-300 hover:bg-rose-500/25">
+              سڕینەوەی یەکجاری هەژمار
+            </button>
+            <div id="accountDeleteConfirmBox" class="hidden flex items-center gap-2 rounded-xl border border-rose-500/40 bg-rose-950/40 p-2">
+              <button id="accountConfirmDeleteBtn" type="button" data-i18n="btnConfirmDeleteAccount" class="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-bold text-white">بەڵێ، هەژمار و تۆمارەکانم بسڕەوە</button>
+              <button id="accountCancelDeleteBtn" type="button" data-i18n="btnCancel" class="rounded-lg bg-slate-800 px-3 py-1.5 text-xs text-slate-300">پاشگەزبوونەوە</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Isolated Synced Metadata Records -->
+        <div class="rounded-3xl border border-slate-800 zip-surface p-6">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-sky-400">
+              <span data-i18n="accountSyncedHistoryHeading">تۆمارە هاوکاتکراوەکانی هەژمارەکەت (جیاکراوە بە RLS)</span>
+              <span id="accountSyncedCountBadge" dir="ltr" class="ms-1 text-slate-300">(0)</span>
+            </h2>
+          </div>
+          <div id="accountSyncedListContainer" class="mt-4 space-y-2.5"></div>
+        </div>
+      </div>
     </section>
 
     <!-- ==================== PAGE 5: SETTINGS & ABOUT ==================== -->

@@ -22,6 +22,9 @@ export const Scanner: React.FC<ScannerProps> = ({
   const t = TRANSLATIONS[language];
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scanTimerRef = useRef<number | null>(null);
+  const rvfcHandleRef = useRef<number | null>(null);
+  const isDecodingFrameRef = useRef<boolean>(false);
+  const isMountedRef = useRef<boolean>(true);
 
   const [cameras, setCameras] = useState<CameraDeviceOption[]>([]);
   const [activeDeviceId, setActiveDeviceId] = useState<string>(preferredCameraId || '');
@@ -35,11 +38,48 @@ export const Scanner: React.FC<ScannerProps> = ({
       window.clearInterval(scanTimerRef.current);
       scanTimerRef.current = null;
     }
+    if (
+      rvfcHandleRef.current !== null &&
+      videoRef.current &&
+      'cancelVideoFrameCallback' in videoRef.current
+    ) {
+      try {
+        (
+          videoRef.current as HTMLVideoElement & {
+            cancelVideoFrameCallback: (h: number) => void;
+          }
+        ).cancelVideoFrameCallback(rvfcHandleRef.current);
+      } catch {
+        // ignore
+      }
+      rvfcHandleRef.current = null;
+    }
+    isDecodingFrameRef.current = false;
     cameraService.stopCamera();
+  };
+
+  const processSingleVideoFrame = async () => {
+    if (!isMountedRef.current || isDecodingFrameRef.current) return false;
+    const video = videoRef.current;
+    if (!video || video.readyState < 2) return false;
+
+    isDecodingFrameRef.current = true;
+    try {
+      const decoded = await decodeQRFromSource(video);
+      if (decoded && cameraService.shouldAcceptDetection(decoded)) {
+        stopScanLoop();
+        onDetected(decoded, 'Live Camera Scan');
+        return true;
+      }
+    } finally {
+      isDecodingFrameRef.current = false;
+    }
+    return false;
   };
 
   const startLiveScanner = async (deviceId?: string) => {
     stopScanLoop();
+    cameraService.resetDetectionLock();
     setCameraError(null);
     setIsInitializing(true);
 
@@ -50,20 +90,45 @@ export const Scanner: React.FC<ScannerProps> = ({
 
     try {
       const info = await cameraService.startCamera(videoRef.current, deviceId);
+      if (!isMountedRef.current) {
+        stopScanLoop();
+        return;
+      }
       setCameras(info.cameras);
       setActiveDeviceId(info.activeDeviceId);
       setTorchSupported(info.torchSupported);
       setTorchActive(false);
       setIsInitializing(false);
 
-      scanTimerRef.current = window.setInterval(async () => {
-        if (!videoRef.current || videoRef.current.readyState < 2) return;
-        const decoded = await decodeQRFromSource(videoRef.current);
-        if (decoded) {
-          stopScanLoop();
-          onDetected(decoded, 'Live Camera Scan');
-        }
-      }, 220);
+      const video = videoRef.current;
+      // Prefer requestVideoFrameCallback where supported, with adaptive 90ms throttle and non-overlapping lock
+      if (video && 'requestVideoFrameCallback' in video) {
+        let lastScanTime = 0;
+        const onFrame = async (now: number) => {
+          if (!isMountedRef.current) return;
+          if (now - lastScanTime >= 85 && !isDecodingFrameRef.current) {
+            lastScanTime = now;
+            const found = await processSingleVideoFrame();
+            if (found) return;
+          }
+          if (isMountedRef.current && videoRef.current) {
+            rvfcHandleRef.current = (
+              videoRef.current as HTMLVideoElement & {
+                requestVideoFrameCallback: (cb: (n: number) => void) => number;
+              }
+            ).requestVideoFrameCallback(onFrame);
+          }
+        };
+        rvfcHandleRef.current = (
+          video as HTMLVideoElement & {
+            requestVideoFrameCallback: (cb: (n: number) => void) => number;
+          }
+        ).requestVideoFrameCallback(onFrame);
+      } else {
+        scanTimerRef.current = window.setInterval(() => {
+          void processSingleVideoFrame();
+        }, 100);
+      }
     } catch {
       setIsInitializing(false);
       setCameraError(t.scannerFallbackDenied);
@@ -71,8 +136,10 @@ export const Scanner: React.FC<ScannerProps> = ({
   };
 
   useEffect(() => {
+    isMountedRef.current = true;
     void startLiveScanner(preferredCameraId);
     return () => {
+      isMountedRef.current = false;
       stopScanLoop();
     };
   }, []);

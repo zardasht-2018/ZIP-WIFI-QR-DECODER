@@ -8,6 +8,8 @@ import { ScannerPage } from './pages/ScannerPage';
 import { ResultsPage } from './pages/ResultsPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { AccountPage } from './pages/AccountPage';
+import { authService, AuthSession } from './services/authService';
 import { DEFAULT_LANGUAGE, SupportedLanguage, TRANSLATIONS } from './i18n/translations';
 
 export default function App() {
@@ -16,6 +18,7 @@ export default function App() {
   const [history, setHistory] = useState<ScanHistoryEntry[]>(() => storageService.getHistory());
   const [currentResult, setCurrentResult] = useState<ParsedQRResult | null>(null);
   const [currentSourceLabel, setCurrentSourceLabel] = useState<string>('');
+  const [authSession, setAuthSession] = useState<AuthSession | null>(() => authService.getCurrentSession());
   const [toast, setToast] = useState<{
     message: string;
     type: 'success' | 'info' | 'error';
@@ -52,6 +55,9 @@ export default function App() {
     if (settings.historyEnabled) {
       const updated = storageService.addHistoryEntry(parsed);
       setHistory(updated);
+      if (authSession) {
+        void authService.insertSyncedScanRecord(parsed, undefined, authSession.accessToken).catch(() => {});
+      }
     }
 
     setActivePage('results');
@@ -163,6 +169,20 @@ export default function App() {
             onDeleteEntry={handleDeleteHistoryEntry}
             onClearAll={handleClearAllHistory}
             onScanNow={() => setActivePage('scanner')}
+          />
+        )}
+
+        {activePage === 'account' && (
+          <AccountPage
+            language={language}
+            session={authSession}
+            onSessionChange={(next) => {
+              setAuthSession(next);
+              if (!next) {
+                setCurrentResult(null);
+              }
+            }}
+            onNotify={showNotification}
           />
         )}
 

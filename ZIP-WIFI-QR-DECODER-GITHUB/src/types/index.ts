@@ -76,4 +76,4 @@ export interface AppSettings {
   preferredCameraId: string;
 }
 
-export type ActivePage = 'home' | 'scanner' | 'results' | 'history' | 'settings';
+export type ActivePage = 'home' | 'scanner' | 'results' | 'history' | 'account' | 'settings';

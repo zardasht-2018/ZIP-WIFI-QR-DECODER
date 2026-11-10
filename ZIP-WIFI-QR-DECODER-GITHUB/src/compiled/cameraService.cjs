@@ -5,20 +5,23 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.cameraService = exports.CameraService = void 0;
 /**
- * ZIP WiFi QR Decoder — Camera Service
+ * ZIP QR — Wi-Fi QR Decoder — High-Speed Camera Service (v3.0)
  *
  * Manages browser `navigator.mediaDevices.getUserMedia` camera streams,
- * device enumeration, front/back lens switching, hardware flashlight (torch)
- * control, and strict camera track cleanup on unmount or scan completion.
+ * device enumeration, rear-camera priority on mobile, adaptive HD resolution,
+ * continuous autofocus & exposure constraints where supported, hardware flashlight
+ * (torch) control, non-blocking `requestVideoFrameCallback` frame processing,
+ * duplicate scan suppression, and strict camera track cleanup on unmount/detection.
  */
 
 class CameraService {
   stream = null;
   torchEnabled = false;
+  lastDecodedPayload = '';
+  lastDecodedTimestamp = 0;
 
   /**
    * Checks whether the current browser context supports `getUserMedia`.
-   * Note: Browsers restrict `mediaDevices` to secure contexts (HTTPS or localhost).
    */
   isCameraApiSupported() {
     if (typeof window === 'undefined' || typeof navigator === 'undefined') {
@@ -45,25 +48,54 @@ class CameraService {
   }
 
   /**
-   * Lists available video input cameras on the device
+   * Lists available video input cameras on the device, sorting rear/environment cameras first
    */
   async listCameras() {
     const check = this.isCameraApiSupported();
     if (!check.supported) return [];
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
-      return devices.filter(d => d.kind === 'videoinput').map((d, index) => ({
-        deviceId: d.deviceId,
-        label: d.label || `Camera ${index + 1}`,
-        facingMode: d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear') ? 'environment' : 'user'
-      }));
+      const cams = devices.filter(d => d.kind === 'videoinput').map((d, index) => {
+        const lower = (d.label || '').toLowerCase();
+        const isBack = lower.includes('back') || lower.includes('rear') || lower.includes('environment') || lower.includes('traseira');
+        return {
+          deviceId: d.deviceId,
+          label: d.label || `Camera ${index + 1}`,
+          facingMode: isBack ? 'environment' : 'user'
+        };
+      });
+      // Prefer rear cameras first on mobile devices
+      cams.sort((a, b) => {
+        if (a.facingMode === 'environment' && b.facingMode !== 'environment') return -1;
+        if (a.facingMode !== 'environment' && b.facingMode === 'environment') return 1;
+        return 0;
+      });
+      return cams;
     } catch {
       return [];
     }
   }
 
   /**
-   * Starts the camera stream and attaches it to the target `<video>` element
+   * Prevents duplicate back-to-back emissions of the exact same QR code within a cooldown window
+   */
+  shouldAcceptDetection(payload, cooldownMs = 2500) {
+    const now = Date.now();
+    if (payload === this.lastDecodedPayload && now - this.lastDecodedTimestamp < cooldownMs) {
+      return false;
+    }
+    this.lastDecodedPayload = payload;
+    this.lastDecodedTimestamp = now;
+    return true;
+  }
+  resetDetectionLock() {
+    this.lastDecodedPayload = '';
+    this.lastDecodedTimestamp = 0;
+  }
+
+  /**
+   * Starts the camera stream, applies continuous focus/exposure optimization where supported,
+   * and attaches it to the target `<video>` element.
    */
   async startCamera(videoElement, preferredDeviceId) {
     this.stopCamera();
@@ -71,34 +103,41 @@ class CameraService {
     if (!check.supported) {
       throw new Error(check.reason || 'Camera access is not supported in this browser.');
     }
-    const constraints = {
-      audio: false,
-      video: preferredDeviceId ? {
-        deviceId: {
-          exact: preferredDeviceId
-        },
-        width: {
-          ideal: 1280
-        },
-        height: {
-          ideal: 720
-        }
-      } : {
-        facingMode: {
-          ideal: 'environment'
-        },
-        width: {
-          ideal: 1280
-        },
-        height: {
-          ideal: 720
-        }
+    const videoConstraints = preferredDeviceId ? {
+      deviceId: {
+        exact: preferredDeviceId
+      },
+      width: {
+        ideal: 1280
+      },
+      height: {
+        ideal: 720
+      },
+      frameRate: {
+        ideal: 30,
+        max: 60
+      }
+    } : {
+      facingMode: {
+        ideal: 'environment'
+      },
+      width: {
+        ideal: 1280
+      },
+      height: {
+        ideal: 720
+      },
+      frameRate: {
+        ideal: 30,
+        max: 60
       }
     };
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-    } catch (err) {
-      // Fallback to basic video: true if ideal constraints fail on older laptops/phones
+      this.stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: videoConstraints
+      });
+    } catch {
       try {
         this.stream = await navigator.mediaDevices.getUserMedia({
           video: true,
@@ -130,8 +169,25 @@ class CameraService {
       try {
         const caps = videoTrack.getCapabilities();
         torchSupported = Boolean(caps && caps.torch);
+
+        // Apply continuous autofocus & continuous exposure when supported by mobile/webcam hardware
+        const advancedConstraints = {};
+        if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+          advancedConstraints.focusMode = 'continuous';
+        }
+        if (Array.isArray(caps.exposureMode) && caps.exposureMode.includes('continuous')) {
+          advancedConstraints.exposureMode = 'continuous';
+        }
+        if (Array.isArray(caps.whiteBalanceMode) && caps.whiteBalanceMode.includes('continuous')) {
+          advancedConstraints.whiteBalanceMode = 'continuous';
+        }
+        if (Object.keys(advancedConstraints).length > 0) {
+          await videoTrack.applyConstraints({
+            advanced: [advancedConstraints]
+          });
+        }
       } catch {
-        torchSupported = false;
+        // Ignore unsupported advanced hardware constraints
       }
     }
     return {
