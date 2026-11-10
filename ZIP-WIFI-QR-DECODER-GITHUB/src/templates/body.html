@@ -1,0 +1,499 @@
+<!-- TOP NAVIGATION HEADER -->
+  <header class="sticky top-0 z-40 border-b border-slate-800/80 bg-[#050811]/90 backdrop-blur-xl">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <button id="brandHomeBtn" type="button" class="flex items-center gap-3 text-left focus:outline-none group">
+        <div class="flex h-10 w-10 items-center justify-center rounded-xl zip-gradient-btn transition-transform group-hover:scale-105">
+          <svg class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <rect x="3" y="3" width="7" height="7" rx="1.5" />
+            <rect x="14" y="3" width="7" height="7" rx="1.5" />
+            <rect x="3" y="14" width="7" height="7" rx="1.5" />
+            <path d="M14 15.5a5 5 0 0 1 7 0M15.8 18a2.5 2.5 0 0 1 3.4 0M17.5 20.2h.01" stroke-linecap="round" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-base font-extrabold tracking-tight text-white sm:text-lg">ZIP WiFi QR Decoder</span>
+            <span class="hidden rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-300 md:inline-block">Local PWA</span>
+          </div>
+          <p class="font-mono-code text-[10px] font-bold tracking-[0.22em] text-slate-400">SCAN. REVEAL. CONNECT.</p>
+        </div>
+      </button>
+
+      <!-- Responsive Navigation Pills -->
+      <nav class="flex flex-wrap items-center gap-1 sm:gap-1.5" aria-label="Main Navigation">
+        <button type="button" data-nav="home" class="nav-tab rounded-xl px-3 py-2 text-xs font-bold transition-all sm:px-3.5">Home</button>
+        <button type="button" data-nav="scanner" class="nav-tab rounded-xl px-3 py-2 text-xs font-bold transition-all sm:px-3.5">Scanner</button>
+        <button type="button" data-nav="results" class="nav-tab rounded-xl px-3 py-2 text-xs font-bold transition-all sm:px-3.5">Results</button>
+        <button type="button" data-nav="history" class="nav-tab rounded-xl px-3 py-2 text-xs font-bold transition-all sm:px-3.5">
+          History <span id="navHistoryBadge" class="ml-1 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] text-sky-300">0</span>
+        </button>
+        <button type="button" data-nav="settings" class="nav-tab rounded-xl px-3 py-2 text-xs font-bold transition-all sm:px-3.5">Settings</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- TOAST NOTIFICATION BANNER -->
+  <div id="toastBanner" class="fixed bottom-5 right-5 z-50 hidden max-w-sm rounded-2xl border border-sky-500/40 bg-[#0c1428]/95 px-4 py-3 text-xs font-semibold text-white shadow-2xl backdrop-blur-md transition-all"></div>
+
+  <!-- HIDDEN FILE INPUT SHARED FOR QUICK GALLERY UPLOAD -->
+  <input id="globalQrFileInput" type="file" accept="image/png,image/jpeg,image/jpg,image/webp" class="hidden" />
+
+  <!-- MAIN CONTENT CONTAINER -->
+  <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+
+    <!-- ==================== PAGE 1: HOME ==================== -->
+    <section id="page-home" class="space-y-8">
+      <!-- Hero Card -->
+      <div class="relative overflow-hidden rounded-3xl border border-slate-800/90 bg-gradient-to-br from-[#0c152c] via-[#070b16] to-[#140b29] p-6 shadow-2xl sm:p-10">
+        <div class="mx-auto max-w-3xl text-center">
+          <div class="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-3.5 py-1 text-[11px] font-bold uppercase tracking-widest text-sky-300">
+            <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+            <span>100% Local In-Browser Decoding • Zero Server Uploads</span>
+          </div>
+
+          <h1 class="text-3xl font-black tracking-tight text-white sm:text-5xl">ZIP WiFi QR Decoder</h1>
+          <p class="mt-2 font-mono-code text-xs font-bold uppercase tracking-[0.28em] text-purple-300 sm:text-sm">SCAN. REVEAL. CONNECT.</p>
+          <p class="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-slate-300 sm:text-base">
+            Scan any Wi-Fi QR code with your camera or upload a QR image (PNG, JPG, WEBP) to immediately extract and reveal the exact encoded <strong>Wi-Fi Password</strong>, <strong>SSID</strong>, <strong>Security Type</strong> (WPA, WPA2, WPA3, WEP, Open, DPP), and <strong>Hidden Network Status</strong>.
+          </p>
+
+          <!-- Primary CTA Buttons -->
+          <div class="mt-8 flex flex-col items-stretch justify-center gap-3.5 sm:flex-row sm:items-center">
+            <button id="homeScanBtn" type="button" class="zip-gradient-btn flex items-center justify-center gap-2.5 rounded-2xl px-8 py-4 text-sm font-black uppercase tracking-wider text-white transition hover:brightness-110">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2" stroke-linecap="round"/>
+                <rect x="7" y="7" width="10" height="10" rx="2"/>
+              </svg>
+              <span>SCAN QR CODE</span>
+            </button>
+
+            <button id="homeUploadBtn" type="button" class="flex items-center justify-center gap-2.5 rounded-2xl border border-purple-500/50 bg-purple-500/15 px-8 py-4 text-sm font-black uppercase tracking-wider text-purple-200 transition hover:bg-purple-500/25">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>UPLOAD QR IMAGE</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3 Clean Primary Action Cards: Scan QR Code, Upload QR Image, Paste QR Content -->
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <!-- Action 1: Scan QR Code -->
+        <div class="rounded-3xl border border-slate-800/90 zip-surface p-6 flex flex-col justify-between">
+          <div>
+            <div class="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-500/15 text-sky-400">
+              <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2" stroke-linecap="round"/>
+                <rect x="7" y="7" width="10" height="10" rx="2"/>
+              </svg>
+            </div>
+            <span class="text-[11px] font-bold uppercase tracking-widest text-sky-400">1. Live Camera</span>
+            <h2 class="mt-1 text-lg font-bold text-white">SCAN QR CODE</h2>
+            <p class="mt-1.5 text-xs leading-relaxed text-slate-400">
+              Open your device camera to automatically detect and decode a physical Wi-Fi QR code in real time.
+            </p>
+          </div>
+          <button id="homeCardScanBtn" type="button" class="zip-gradient-btn mt-6 w-full rounded-2xl px-5 py-3.5 text-xs font-black uppercase tracking-wider text-white transition hover:brightness-110">
+            OPEN CAMERA SCANNER
+          </button>
+        </div>
+
+        <!-- Action 2: Upload QR Image -->
+        <div id="homeDropzone" class="rounded-3xl border-2 border-dashed border-slate-700/80 zip-surface p-6 flex flex-col justify-between transition hover:border-sky-400/60">
+          <div>
+            <div class="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-500/15 text-purple-300">
+              <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="3"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <path d="M21 15l-5-5L5 21"/>
+              </svg>
+            </div>
+            <span class="text-[11px] font-bold uppercase tracking-widest text-purple-300">2. Image Picker &amp; Dropzone</span>
+            <h2 class="mt-1 text-lg font-bold text-white">UPLOAD QR IMAGE</h2>
+            <p class="mt-1.5 text-xs leading-relaxed text-slate-400">
+              Select or drag and drop a QR image file (PNG, JPG, JPEG, or WEBP) from your gallery or computer.
+            </p>
+          </div>
+          <button id="dropzoneBrowseBtn" type="button" class="mt-6 w-full rounded-2xl border border-purple-500/50 bg-purple-500/15 px-5 py-3.5 text-xs font-black uppercase tracking-wider text-purple-200 transition hover:bg-purple-500/25">
+            SELECT QR IMAGE
+          </button>
+        </div>
+
+        <!-- Action 3: Paste QR Content -->
+        <div class="rounded-3xl border border-slate-800/90 zip-surface p-6 flex flex-col justify-between">
+          <div>
+            <div class="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-300">
+              <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke-linecap="round"/>
+                <rect x="8" y="2" width="8" height="4" rx="1"/>
+              </svg>
+            </div>
+            <span class="text-[11px] font-bold uppercase tracking-widest text-emerald-300">3. Direct Payload</span>
+            <h2 class="mt-1 text-lg font-bold text-white">PASTE QR CONTENT</h2>
+            <p class="mt-1.5 text-xs leading-relaxed text-slate-400">
+              Paste an actual Wi-Fi QR payload string (<code class="text-sky-300">WIFI:...;;</code> or <code class="text-purple-300">DPP:...;;</code>) to extract its credentials.
+            </p>
+            <input id="homePasteInput" type="text" placeholder="Paste WIFI:... or DPP:... payload here" class="font-mono-code mt-3 w-full rounded-xl border border-slate-700 bg-[#040710] px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-sky-400 focus:outline-none" />
+          </div>
+          <button id="homePasteDecodeBtn" type="button" class="mt-4 w-full rounded-2xl border border-sky-500/40 bg-sky-500/15 px-5 py-3.5 text-xs font-black uppercase tracking-wider text-sky-300 transition hover:bg-sky-500/25">
+            DECODE QR CONTENT
+          </button>
+        </div>
+      </div>
+
+      <!-- Recently Scanned Codes on Home Page -->
+      <div class="rounded-3xl border border-slate-800/90 zip-surface p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold text-white sm:text-lg">Recently Scanned Codes</h2>
+            <p class="text-xs text-slate-400">Locally saved QR scans on this device</p>
+          </div>
+          <button id="homeViewAllHistoryBtn" type="button" class="rounded-xl border border-slate-700 px-3.5 py-1.5 text-xs font-bold text-sky-300 hover:border-sky-400">
+            Manage History
+          </button>
+        </div>
+        <div id="homeRecentList" class="mt-4 space-y-3"></div>
+      </div>
+    </section>
+
+    <!-- ==================== PAGE 2: SCANNER ==================== -->
+    <section id="page-scanner" class="hidden mx-auto max-w-3xl space-y-6">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 class="text-2xl font-black text-white">Live Wi-Fi QR Scanner</h1>
+          <p class="text-xs text-slate-400">Align the Wi-Fi QR code inside the frame or select an image from your gallery.</p>
+        </div>
+        <button id="scannerCancelTopBtn" type="button" class="rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-200 hover:bg-slate-700">
+          Cancel
+        </button>
+      </div>
+
+      <div class="overflow-hidden rounded-3xl border border-slate-800 bg-[#060a14] shadow-2xl">
+        <div class="relative aspect-[4/3] w-full max-h-[460px] bg-black flex items-center justify-center overflow-hidden">
+          <video id="scannerVideo" class="h-full w-full object-cover" muted playsinline></video>
+
+          <!-- Reticle Overlay -->
+          <div id="scannerReticleOverlay" class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center p-6">
+            <div class="relative h-56 w-56 sm:h-64 sm:w-64 rounded-3xl border-2 border-sky-400/90 shadow-[0_0_45px_rgba(56,189,248,0.28)]">
+              <div class="scan-laser absolute inset-x-3 h-0.5 bg-gradient-to-r from-transparent via-sky-400 to-transparent shadow-[0_0_12px_#38bdf8]"></div>
+            </div>
+            <p id="scannerStatusPill" class="mt-4 rounded-full bg-black/75 px-4 py-1.5 text-xs font-semibold text-sky-300 backdrop-blur-md">
+              Requesting camera access...
+            </p>
+          </div>
+
+          <!-- Camera Fallback Notice -->
+          <div id="scannerFallbackBox" class="hidden mx-auto max-w-md p-6 text-center">
+            <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-400 font-bold text-xl">!</div>
+            <h2 class="text-base font-bold text-white">Camera Unavailable — Image Upload Active</h2>
+            <p id="scannerFallbackReason" class="mt-2 text-xs leading-relaxed text-slate-300"></p>
+            <div class="mt-4 flex flex-wrap items-center justify-center gap-2.5">
+              <button id="scannerRetryCameraBtn" type="button" class="rounded-xl border border-sky-500/40 bg-sky-500/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-sky-300 hover:bg-sky-500/25">
+                Retry Camera
+              </button>
+              <button id="scannerFallbackUploadBtn" type="button" class="zip-gradient-btn rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider text-white">
+                Upload QR Image Instead
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scanner Control Toolbar -->
+        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800/90 zip-card p-4">
+          <div class="flex flex-wrap items-center gap-2">
+            <select id="cameraDeviceSelect" aria-label="Camera selection" class="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-white">
+              <option value="">Default Environment Camera</option>
+            </select>
+
+            <button id="scannerTorchBtn" type="button" disabled class="rounded-xl border border-slate-800 bg-slate-900/60 px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-not-allowed">
+              Flashlight N/A
+            </button>
+
+            <button id="scannerGalleryBtn" type="button" class="rounded-xl border border-purple-500/40 bg-purple-500/15 px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-purple-200 hover:bg-purple-500/25">
+              Upload from Gallery
+            </button>
+          </div>
+
+          <button id="scannerCancelBottomBtn" type="button" class="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-300 hover:bg-slate-700 hover:text-white">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== PAGE 3: RESULTS ==================== -->
+    <section id="page-results" class="hidden mx-auto max-w-4xl space-y-6">
+      <div id="resultsEmptyState" class="rounded-3xl border border-slate-800 zip-surface p-8 text-center">
+        <h2 class="text-xl font-bold text-white">No QR Code Scanned Yet</h2>
+        <p class="mt-2 text-sm text-slate-400">Scan a Wi-Fi QR code with your camera, upload a QR image, or paste QR content on the Home page.</p>
+        <div class="mt-6 flex flex-wrap justify-center gap-3">
+          <button id="resultsEmptyScanBtn" type="button" class="zip-gradient-btn rounded-2xl px-6 py-3 text-xs font-bold uppercase tracking-wider text-white">
+            Scan Wi-Fi QR
+          </button>
+          <button id="resultsEmptyUploadBtn" type="button" class="rounded-2xl border border-purple-500/40 bg-purple-500/15 px-6 py-3 text-xs font-bold uppercase tracking-wider text-purple-200">
+            Upload QR Image
+          </button>
+        </div>
+      </div>
+
+      <div id="resultsContentWrap" class="hidden space-y-6">
+        <!-- Top Network Identity Banner -->
+        <div class="flex flex-col justify-between gap-4 rounded-3xl border border-slate-800 zip-surface p-6 sm:flex-row sm:items-center">
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <span id="resCategoryBadge" class="rounded-lg border border-sky-500/40 bg-sky-500/15 px-2.5 py-0.5 text-xs font-bold uppercase text-sky-300">WIFI</span>
+              <span id="resSourceBadge" class="rounded-lg border border-slate-700 bg-slate-800/80 px-2.5 py-0.5 text-xs text-slate-300">Decoded</span>
+            </div>
+            <h1 id="resSsidHeading" class="mt-2 break-all text-2xl font-black text-white sm:text-3xl"></h1>
+            <p id="resTimestampText" class="mt-1 text-xs text-slate-400"></p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button id="resCopySsidBtn" type="button" class="rounded-xl border border-slate-700 bg-slate-800/90 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-200 hover:border-sky-400">
+              Copy SSID
+            </button>
+            <button id="resScanAnotherTopBtn" type="button" class="zip-gradient-btn rounded-xl px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white hover:brightness-110">
+              SCAN ANOTHER CODE
+            </button>
+          </div>
+        </div>
+
+        <!-- MOST IMPORTANT: PROMINENT PASSWORD EXTRACTION & DISPLAY MODULE -->
+        <div class="relative overflow-hidden rounded-3xl border-2 border-sky-500/50 bg-gradient-to-br from-[#0d162e] via-[#090e1d] to-[#160d2e] p-6 shadow-2xl">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+            <div class="flex items-center gap-2">
+              <span class="inline-block h-2.5 w-2.5 rounded-full bg-sky-400 shadow-[0_0_10px_#38bdf8]"></span>
+              <h2 class="text-xs font-extrabold uppercase tracking-widest text-sky-300">EXTRACTED WI-FI PASSWORD</h2>
+            </div>
+            <span id="resPasswordCharCount" class="rounded-md bg-slate-800/90 px-2.5 py-0.5 font-mono-code text-xs text-slate-300"></span>
+          </div>
+
+          <!-- Active Password Box -->
+          <div id="resPasswordValueContainer" class="mt-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div id="resPasswordField" class="font-mono-code flex-1 overflow-x-auto rounded-2xl border border-slate-700 bg-[#040710] px-5 py-4 text-xl font-extrabold tracking-wide text-white sm:text-2xl"></div>
+
+              <div class="flex flex-wrap items-center gap-2.5">
+                <button id="resTogglePasswordBtn" type="button" class="flex-1 rounded-xl border border-slate-700 bg-slate-800/90 px-4 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-200 transition hover:border-sky-400 hover:text-white sm:flex-initial">
+                  HIDE PASSWORD
+                </button>
+                <button id="resCopyPasswordBtn" type="button" class="zip-gradient-btn flex-1 rounded-xl px-5 py-3.5 text-xs font-black uppercase tracking-wider text-white transition hover:brightness-110 sm:flex-initial">
+                  COPY PASSWORD
+                </button>
+              </div>
+            </div>
+            <p class="mt-2.5 text-xs text-slate-400">Decoded locally directly from the QR code payload with full special-character unescaping.</p>
+          </div>
+
+          <!-- Missing / Open Network Password Notice -->
+          <div id="resNoPasswordNotice" class="hidden mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-4 text-sm font-bold text-amber-200"></div>
+        </div>
+
+        <!-- Warnings Box -->
+        <div id="resWarningsBox" class="hidden rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-200 space-y-1"></div>
+
+        <!-- NETWORK INFORMATION DETAILS CARD -->
+        <div class="rounded-3xl border border-slate-800 zip-surface p-6">
+          <h2 class="text-sm font-bold uppercase tracking-widest text-sky-400">NETWORK INFORMATION</h2>
+
+          <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="rounded-2xl border border-slate-800/90 zip-card p-4">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">1. Wi-Fi Name (SSID)</span>
+              <p id="infoSsid" class="font-mono-code mt-1 break-all text-base font-bold text-white"></p>
+            </div>
+
+            <div class="rounded-2xl border border-slate-800/90 zip-card p-4">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">2. Wi-Fi Password</span>
+              <p id="infoPassword" class="font-mono-code mt-1 break-all text-base font-bold text-sky-300"></p>
+            </div>
+
+            <div class="rounded-2xl border border-slate-800/90 zip-card p-4">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">3. Security Type</span>
+              <p id="infoSecurity" class="mt-1 text-base font-bold text-white"></p>
+            </div>
+
+            <div class="rounded-2xl border border-slate-800/90 zip-card p-4">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">4. Hidden Network Status</span>
+              <p id="infoHidden" class="mt-1 text-base font-bold text-white"></p>
+            </div>
+
+            <div class="rounded-2xl border border-slate-800/90 zip-card p-4 sm:col-span-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">5. QR Payload Format</span>
+              <p id="infoFormat" class="mt-1 text-sm font-semibold text-purple-300"></p>
+            </div>
+          </div>
+
+          <!-- 6. All Additional Information Present in the QR Code -->
+          <div class="mt-6 border-t border-slate-800 pt-5">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">6. Additional Information Actually Present in QR Code</h3>
+            <div id="infoExtraFields" class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2"></div>
+          </div>
+
+          <!-- Raw Decoded String -->
+          <div class="mt-6 border-t border-slate-800 pt-5">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Exact Raw QR Payload</span>
+            <pre id="infoRawPayload" class="font-mono-code mt-2 overflow-x-auto rounded-xl border border-slate-800 bg-[#040710] p-3.5 text-xs text-slate-300"></pre>
+          </div>
+
+          <!-- Required Action Controls -->
+          <div class="mt-6 flex flex-wrap items-center gap-3 border-t border-slate-800 pt-5">
+            <button id="resCopyAllBtn" type="button" class="rounded-xl bg-sky-500/20 px-4 py-3 text-xs font-bold uppercase tracking-wider text-sky-300 transition hover:bg-sky-500/30">
+              COPY ALL INFORMATION
+            </button>
+            <button id="resDownloadTxtBtn" type="button" class="rounded-xl border border-purple-500/40 bg-purple-500/15 px-4 py-3 text-xs font-bold uppercase tracking-wider text-purple-200 transition hover:bg-purple-500/25">
+              DOWNLOAD RESULTS (.TXT)
+            </button>
+            <button id="resDownloadJsonBtn" type="button" class="rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-200 transition hover:border-sky-400">
+              DOWNLOAD RESULTS (.JSON)
+            </button>
+            <button id="resScanAnotherBottomBtn" type="button" class="zip-gradient-btn ml-auto rounded-xl px-5 py-3 text-xs font-bold uppercase tracking-wider text-white">
+              SCAN ANOTHER CODE
+            </button>
+          </div>
+        </div>
+
+        <!-- Direct String Tester -->
+        <div class="rounded-3xl border border-slate-800 zip-surface p-6">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Raw QR Payload String Tester</h3>
+          <p class="mt-1 text-xs text-slate-400">Paste any raw <code class="text-sky-300">WIFI:T:...;S:...;P:...;;</code> or <code class="text-purple-300">DPP:...;;</code> string to test special-character parsing:</p>
+          <div class="mt-3 flex flex-col gap-2.5 sm:flex-row">
+            <input id="manualPayloadInput" type="text" placeholder="Paste WIFI:... or DPP:... QR payload here" class="font-mono-code flex-1 rounded-xl border border-slate-700 bg-[#040710] px-4 py-2.5 text-xs text-white focus:border-sky-400 focus:outline-none" />
+            <button id="manualDecodeBtn" type="button" class="rounded-xl border border-sky-500/40 bg-sky-500/15 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-sky-300 hover:bg-sky-500/25">
+              Decode Payload
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== PAGE 4: HISTORY ==================== -->
+    <section id="page-history" class="hidden mx-auto max-w-4xl space-y-6">
+      <div class="flex flex-col justify-between gap-4 rounded-3xl border border-slate-800 zip-surface p-6 sm:flex-row sm:items-center">
+        <div>
+          <h1 class="text-2xl font-black text-white">Scan History</h1>
+          <p class="mt-1 text-xs text-slate-400">View previously scanned QR codes. Stored strictly locally on your device.</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2 text-xs font-semibold text-slate-200">
+            <input id="historyToggleCheckbox" type="checkbox" checked class="h-4 w-4 accent-sky-500" />
+            <span>Save Scan History</span>
+          </label>
+          <button id="historyClearAllBtn" type="button" class="rounded-xl border border-rose-500/40 bg-rose-500/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-rose-300 hover:bg-rose-500/25">
+            Clear All History
+          </button>
+        </div>
+      </div>
+
+      <!-- In-Page Clear Confirmation Modal -->
+      <div id="historyClearModal" class="hidden rounded-2xl border border-rose-500/50 bg-[#190b18] p-5 shadow-xl">
+        <h3 class="text-sm font-bold text-white">Confirm Clearing All Scan History</h3>
+        <p class="mt-1 text-xs text-slate-300">Are you sure you want to permanently delete all saved scan history entries from your browser?</p>
+        <div class="mt-4 flex items-center gap-3">
+          <button id="historyConfirmClearBtn" type="button" class="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold uppercase text-white hover:bg-rose-500">
+            Yes, Delete All
+          </button>
+          <button id="historyCancelClearBtn" type="button" class="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300">
+            Cancel
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <input id="historySearchInput" type="search" placeholder="Search history by network name (SSID), security protocol, or format..." class="w-full rounded-2xl border border-slate-800 zip-surface px-4 py-3 text-xs text-white focus:border-sky-400 focus:outline-none" />
+      </div>
+
+      <div id="historyListContainer" class="space-y-3"></div>
+    </section>
+
+    <!-- ==================== PAGE 5: SETTINGS ==================== -->
+    <section id="page-settings" class="hidden mx-auto max-w-4xl space-y-6">
+      <div class="rounded-3xl border border-slate-800 zip-surface p-6">
+        <h1 class="text-2xl font-black text-white">Settings &amp; Privacy</h1>
+        <p class="mt-1 text-xs text-slate-400">Customize theme accents, password masking defaults, and local storage privacy controls.</p>
+      </div>
+
+      <!-- 1. Theme Settings -->
+      <div class="rounded-3xl border border-slate-800 zip-surface p-6 space-y-4">
+        <h2 class="text-sm font-bold uppercase tracking-widest text-sky-400">Theme Settings</h2>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <button type="button" data-theme-choice="electric-blue" class="theme-card rounded-2xl border border-sky-400 bg-sky-500/15 p-4 text-left transition">
+            <div class="text-sm font-bold text-white">Electric Blue &amp; Purple</div>
+            <div class="mt-1 text-xs text-slate-400">Default ZIP dark neon palette</div>
+          </button>
+          <button type="button" data-theme-choice="cyber-purple" class="theme-card rounded-2xl border border-slate-800 zip-card p-4 text-left transition">
+            <div class="text-sm font-bold text-white">Cyber Violet Core</div>
+            <div class="mt-1 text-xs text-slate-400">Deep obsidian with violet accents</div>
+          </button>
+          <button type="button" data-theme-choice="emerald-shield" class="theme-card rounded-2xl border border-slate-800 zip-card p-4 text-left transition">
+            <div class="text-sm font-bold text-white">Emerald Security</div>
+            <div class="mt-1 text-xs text-slate-400">High-contrast tactical dark theme</div>
+          </button>
+        </div>
+
+        <div class="flex items-center justify-between rounded-2xl border border-slate-800 zip-card p-4">
+          <div>
+            <div class="text-sm font-bold text-white">Mask Password by Default on Results Page</div>
+            <div class="text-xs text-slate-400">Start with password masked (••••••) until you tap SHOW PASSWORD</div>
+          </div>
+          <input id="settingsMaskCheckbox" type="checkbox" class="h-5 w-5 accent-sky-500" />
+        </div>
+      </div>
+
+      <!-- 2. History Preferences -->
+      <div class="rounded-3xl border border-slate-800 zip-surface p-6 space-y-4">
+        <h2 class="text-sm font-bold uppercase tracking-widest text-sky-400">History Preferences</h2>
+        <div class="flex items-center justify-between rounded-2xl border border-slate-800 zip-card p-4">
+          <div>
+            <div class="text-sm font-bold text-white">Enable Local Scan History</div>
+            <div class="text-xs text-slate-400">Automatically save decoded QR codes in your browser&apos;s local storage</div>
+          </div>
+          <input id="settingsHistoryCheckbox" type="checkbox" checked class="h-5 w-5 accent-sky-500" />
+        </div>
+      </div>
+
+      <!-- 3. Privacy Information & Clear Stored Data -->
+      <div class="rounded-3xl border border-slate-800 zip-surface p-6 space-y-4">
+        <h2 class="text-sm font-bold uppercase tracking-widest text-sky-400">Privacy Information &amp; Data Control</h2>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 text-xs text-slate-300">
+          <div class="rounded-2xl border border-slate-800 zip-card p-4">
+            <div class="font-bold text-white">100% Client-Side Execution</div>
+            <p class="mt-1 text-slate-400">Camera streams and uploaded QR images are decoded entirely inside your browser. Passwords are never transmitted to any external server or analytics service.</p>
+          </div>
+          <div class="rounded-2xl border border-slate-800 zip-card p-4">
+            <div class="font-bold text-white">Untrusted Input &amp; Export Safety</div>
+            <p class="mt-1 text-slate-400">Scanned URLs are never opened automatically, and exported files use neutral timestamped filenames so credentials never leak in file names.</p>
+          </div>
+        </div>
+
+        <div>
+          <button id="settingsWipeDataBtn" type="button" class="rounded-xl border border-rose-500/40 bg-rose-500/15 px-5 py-3 text-xs font-bold uppercase tracking-wider text-rose-300 hover:bg-rose-500/25">
+            Clear All Stored Data (History &amp; Preferences)
+          </button>
+          <div id="settingsWipeConfirmBox" class="hidden mt-3 flex flex-wrap items-center gap-3 rounded-2xl border border-rose-500/40 bg-rose-950/30 p-4">
+            <span class="text-xs font-semibold text-rose-200">Confirm wiping all saved history and resetting settings?</span>
+            <button id="settingsConfirmWipeBtn" type="button" class="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold uppercase text-white">Confirm Wipe</button>
+            <button id="settingsCancelWipeBtn" type="button" class="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. About ZIP -->
+      <div class="rounded-3xl border border-slate-800 zip-surface p-6">
+        <h2 class="text-sm font-bold uppercase tracking-widest text-sky-400">About ZIP WiFi QR Decoder</h2>
+        <p class="mt-2 text-xs leading-relaxed text-slate-300">
+          <strong>ZIP WiFi QR Decoder (v2.4.0 PWA)</strong> — <span class="font-mono-code text-sky-300">SCAN. REVEAL. CONNECT.</span> Designed for iPhones, iPads, Android phones &amp; tablets, Windows, MacBooks, and Linux computers. Supports WPA, WPA2, WPA3-SAE, WPA2-EAP, WEP, Open (<code class="text-sky-300">nopass</code>), hidden networks, escaped special characters (<code class="text-sky-300">\; \, \: \\ \"</code>), and Wi-Fi Easy Connect (<code class="text-purple-300">DPP:</code>).
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-slate-800/80 bg-[#04060d] py-5 text-center text-xs text-slate-400">
+    <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 sm:flex-row sm:px-6">
+      <span class="font-bold text-slate-300">ZIP WiFi QR Decoder — SCAN. REVEAL. CONNECT.</span>
+      <span>100% Local In-Browser QR Decoding • Zero Cloud Uploads</span>
+    </div>
+  </footer>

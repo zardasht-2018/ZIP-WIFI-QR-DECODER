@@ -1,9 +1,8 @@
 /**
  * ZIP WiFi QR Decoder — Independent Automated Test Suite
  *
- * Dynamically generates temporary QR code matrices and images (PNG, JPG, WEBP) during test execution
- * and cleans them up immediately afterward so zero sample QR images or demo credentials are bundled
- * into the production application.
+ * Uses pre-compiled modules in `src/compiled/` (or Babel on-the-fly when available)
+ * and pure Node QRCode / Python OpenCV matrix generation so tests run cleanly on any machine.
  *
  * Tests:
  * 1. Valid WPA QR codes
@@ -28,28 +27,30 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-// Resolve global Babel for TypeScript compilation
-const babel = require('/usr/share/nodejs/@babel/core');
-
 const projectRoot = path.resolve(__dirname, '..');
 
-function compileTs(relPath, outName) {
-  const fullPath = path.join(projectRoot, relPath);
+function loadModule(relTsPath, compiledName) {
+  const precompiled = path.join(projectRoot, 'src', 'compiled', compiledName);
+  if (fs.existsSync(precompiled)) {
+    return require(precompiled);
+  }
+  const babel = require('/usr/share/nodejs/@babel/core');
+  const fullPath = path.join(projectRoot, relTsPath);
   const src = fs.readFileSync(fullPath, 'utf8');
   const transformed = babel.transformSync(src, {
     filename: fullPath,
     presets: ['/usr/share/nodejs/@babel/preset-typescript'],
     plugins: ['/usr/share/nodejs/@babel/plugin-transform-modules-commonjs'],
   });
-  const outPath = path.join('/tmp', outName);
+  const outPath = path.join('/tmp', compiledName);
   fs.writeFileSync(outPath, transformed.code);
   return require(outPath);
 }
 
-const wifiParser = compileTs('src/services/wifiParser.ts', 'test_wifiParser.cjs');
-const qrDecoder = compileTs('src/services/qrDecoder.ts', 'test_qrDecoder.cjs');
-const storageMod = compileTs('src/services/storageService.ts', 'test_storageService.cjs');
-const clipMod = compileTs('src/utils/clipboardAndExport.ts', 'test_clipboardAndExport.cjs');
+const wifiParser = loadModule('src/services/wifiParser.ts', 'wifiParser.cjs');
+const qrDecoder = loadModule('src/services/qrDecoder.ts', 'qrDecoder.cjs');
+const storageMod = loadModule('src/services/storageService.ts', 'storageService.cjs');
+const clipMod = loadModule('src/utils/clipboardAndExport.ts', 'clipboardAndExport.cjs');
 
 let passed = 0;
 let failed = 0;
@@ -265,18 +266,15 @@ runTest(14, 'History service respects opt-in/out privacy settings, single delete
   assert.strictEqual(svc.getHistory().length, 2);
   assert.strictEqual(svc.getHistory()[0].ssid, 'Net_Two');
 
-  // Delete single entry
   svc.deleteHistoryEntry(p1.id);
   assert.strictEqual(svc.getHistory().length, 1);
   assert.strictEqual(svc.getHistory()[0].id, p2.id);
 
-  // Disable history and ensure new scans are NOT recorded
   svc.saveSettings({ historyEnabled: false });
   const p3 = wifiParser.parseQRPayload('WIFI:T:WPA2;S:Private_Net;P:Secret333;H:false;;');
   svc.addHistoryEntry(p3);
   assert.strictEqual(svc.getHistory().length, 1);
 
-  // Clear all
   svc.clearHistory();
   assert.strictEqual(svc.getHistory().length, 0);
 });

@@ -1,20 +1,21 @@
 /**
- * ZIP WiFi QR Decoder — Production Distribution Builder
+ * ZIP WiFi QR Decoder — Self-Contained Production Distribution Builder
  *
- * Compiles TypeScript modules from `src/` into a clean, root-relative production `dist/`
- * bundle (`dist/index.html`, `dist/assets/app.js`, `dist/assets/app.css`, `dist/manifest.json`,
- * `dist/sw.js`, `dist/_redirects`, `dist/_headers`, `dist/icons/*`, `dist/logo/*`)
- * ready for Cloudflare Pages deployment.
+ * Generates the production `dist/` directory (`dist/index.html`, `dist/assets/index.css`,
+ * `dist/assets/index.js`, `dist/manifest.json`, `dist/sw.js`, `dist/_redirects`,
+ * `dist/_headers`, `dist/icons/*`, `dist/logo/*`) using only standard Node.js built-in modules.
+ *
+ * Works deterministically in both local environments and Cloudflare Pages build containers.
  */
 
 const fs = require('fs');
 const path = require('path');
-const babel = require('/usr/share/nodejs/@babel/core');
 
 const projectRoot = path.resolve(__dirname, '..');
 const distDir = path.join(projectRoot, 'dist');
 const assetsDir = path.join(distDir, 'assets');
 const publicDir = path.join(projectRoot, 'public');
+const templatesDir = path.join(projectRoot, 'src', 'templates');
 
 function copyDirRecursive(src, dest) {
   if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
@@ -29,21 +30,7 @@ function copyDirRecursive(src, dest) {
   }
 }
 
-function stripTsAndTranspile(relPath) {
-  const fullPath = path.join(projectRoot, relPath);
-  let code = fs.readFileSync(fullPath, 'utf8');
-  code = code.replace(/^import\s+[\s\S]*?from\s+['"].*?['"];?\s*$/gm, '');
-  code = code.replace(/^export\s+(async\s+)?function/gm, '$1function');
-  code = code.replace(/^export\s+const/gm, 'const');
-  code = code.replace(/^export\s+class/gm, 'class');
-  const res = babel.transformSync(code, {
-    filename: fullPath,
-    presets: ['/usr/share/nodejs/@babel/preset-typescript'],
-  });
-  return res.code;
-}
-
-// 1. Clean and prepare dist/ and dist/assets/
+// 1. Clean and create dist/ and dist/assets/
 if (fs.existsSync(distDir)) {
   fs.rmSync(distDir, { recursive: true, force: true });
 }
@@ -52,33 +39,12 @@ fs.mkdirSync(assetsDir, { recursive: true });
 // 2. Copy all static files from public/ to dist/
 copyDirRecursive(publicDir, distDir);
 
-// 3. Compile core TypeScript services from src/services/
-const parserJs = stripTsAndTranspile('src/services/wifiParser.ts');
-const decoderJs = stripTsAndTranspile('src/services/qrDecoder.ts');
-const cameraJs = stripTsAndTranspile('src/services/cameraService.ts');
-const storageJs = stripTsAndTranspile('src/services/storageService.ts');
-const utilsJs = stripTsAndTranspile('src/utils/clipboardAndExport.ts');
+// 3. Read self-contained application CSS, HTML body, and JS runtime from src/templates/
+const cssContent = fs.readFileSync(path.join(templatesDir, 'app.css'), 'utf8');
+const bodyHtml = fs.readFileSync(path.join(templatesDir, 'body.html'), 'utf8');
+let jsContent = fs.readFileSync(path.join(templatesDir, 'runtime.js'), 'utf8');
 
-// 4. Extract UI controller & stylesheet from the verified standalone build
-const verifiedHtmlPath = path.resolve(
-  projectRoot,
-  '..',
-  'zip-wifi-qr-decoder.html'
-);
-
-const verifiedHtml = fs.readFileSync(verifiedHtmlPath, 'utf8');
-const styleMatch = verifiedHtml.match(/<style>([\s\S]*?)<\/style>/);
-const bodyMatch = verifiedHtml.match(/<body[^>]*>([\s\S]*?)<script>/);
-const scriptMatch = verifiedHtml.match(/<script>([\s\S]*?)<\/script>/);
-
-if (!styleMatch || !bodyMatch || !scriptMatch) {
-  throw new Error('Could not extract production blocks.');
-}
-
-const cssContent = styleMatch[1].trim() + '\n';
-let jsContent = scriptMatch[1].trim();
-
-// Add Service Worker registration for offline PWA support
+// Append Service Worker registration for offline PWA operation
 jsContent += `\n
 if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
   window.addEventListener('load', () => {
@@ -90,14 +56,7 @@ if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || wi
 fs.writeFileSync(path.join(assetsDir, 'index.css'), cssContent, 'utf8');
 fs.writeFileSync(path.join(assetsDir, 'index.js'), jsContent, 'utf8');
 
-// Also store compiled modular TypeScript services verification bundle
-fs.writeFileSync(
-  path.join(assetsDir, 'services.bundle.js'),
-  [parserJs, decoderJs, cameraJs, storageJs, utilsJs].join('\n\n'),
-  'utf8'
-);
-
-// 5. Generate production dist/index.html referencing root-relative /assets/index.css and /assets/index.js
+// 4. Write root-relative dist/index.html
 const prodIndexHtml = `<!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
@@ -117,7 +76,7 @@ const prodIndexHtml = `<!DOCTYPE html>
   <link rel="stylesheet" href="/assets/index.css" />
 </head>
 <body data-theme="electric-blue" class="min-h-screen flex flex-col selection:bg-sky-500 selection:text-white">
-${bodyMatch[1].trim()}
+${bodyHtml.trim()}
   <script src="/assets/index.js"></script>
 </body>
 </html>
