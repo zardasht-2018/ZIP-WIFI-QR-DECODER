@@ -5,18 +5,19 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.cameraService = exports.CameraService = void 0;
 /**
- * ZIP QR — Wi-Fi QR Decoder — High-Speed Camera Service (v3.0)
+ * ZIP QR — Wi-Fi QR Decoder — High-Speed Camera Service (v4.0)
  *
  * Manages browser `navigator.mediaDevices.getUserMedia` camera streams,
  * device enumeration, rear-camera priority on mobile, adaptive HD resolution,
  * continuous autofocus & exposure constraints where supported, hardware flashlight
- * (torch) control, non-blocking `requestVideoFrameCallback` frame processing,
- * duplicate scan suppression, and strict camera track cleanup on unmount/detection.
+ * (torch) & zoom capability detection and control, non-blocking `requestVideoFrameCallback`
+ * frame processing, duplicate scan suppression, and strict camera track cleanup.
  */
 
 class CameraService {
   stream = null;
   torchEnabled = false;
+  currentZoom = 1;
   lastDecodedPayload = '';
   lastDecodedTimestamp = 0;
 
@@ -95,9 +96,9 @@ class CameraService {
 
   /**
    * Starts the camera stream, applies continuous focus/exposure optimization where supported,
-   * and attaches it to the target `<video>` element.
+   * detects hardware torch and zoom capabilities, and attaches it to the target `<video>` element.
    */
-  async startCamera(videoElement, preferredDeviceId) {
+  async startCamera(videoElement, preferredDeviceId, facingModeHint) {
     this.stopCamera();
     const check = this.isCameraApiSupported();
     if (!check.supported) {
@@ -119,7 +120,7 @@ class CameraService {
       }
     } : {
       facingMode: {
-        ideal: 'environment'
+        ideal: facingModeHint || 'environment'
       },
       width: {
         ideal: 1280
@@ -163,12 +164,30 @@ class CameraService {
     const cameras = await this.listCameras();
     const videoTrack = this.stream.getVideoTracks()[0];
     const settings = videoTrack ? videoTrack.getSettings() : {};
-    const activeDeviceId = settings.deviceId || preferredDeviceId || (cameras[0]?.deviceId ?? '');
+    const activeDeviceId = (typeof settings.deviceId === 'string' ? settings.deviceId : '') || preferredDeviceId || (cameras[0]?.deviceId ?? '');
     let torchSupported = false;
+    let zoomSupported = false;
+    let zoomMin = 1;
+    let zoomMax = 1;
+    let zoomStep = 0.1;
+    let currentZoom = 1;
     if (videoTrack && 'getCapabilities' in videoTrack) {
       try {
         const caps = videoTrack.getCapabilities();
         torchSupported = Boolean(caps && caps.torch);
+        if (caps && caps.zoom && typeof caps.zoom === 'object') {
+          const z = caps.zoom;
+          const minVal = typeof z.min === 'number' ? z.min : 1;
+          const maxVal = typeof z.max === 'number' ? z.max : 1;
+          if (maxVal > minVal) {
+            zoomSupported = true;
+            zoomMin = minVal;
+            zoomMax = Math.min(maxVal, 5);
+            zoomStep = typeof z.step === 'number' && z.step > 0 ? z.step : 0.1;
+            currentZoom = typeof settings.zoom === 'number' ? settings.zoom : minVal;
+            this.currentZoom = currentZoom;
+          }
+        }
 
         // Apply continuous autofocus & continuous exposure when supported by mobile/webcam hardware
         const advancedConstraints = {};
@@ -194,7 +213,12 @@ class CameraService {
       stream: this.stream,
       cameras,
       activeDeviceId,
-      torchSupported
+      torchSupported,
+      zoomSupported,
+      zoomMin,
+      zoomMax,
+      zoomStep,
+      currentZoom
     };
   }
 
@@ -220,10 +244,31 @@ class CameraService {
   }
 
   /**
+   * Adjusts optical/digital camera zoom when supported by the active camera track
+   */
+  async setZoom(zoomValue) {
+    if (!this.stream) return this.currentZoom;
+    const track = this.stream.getVideoTracks()[0];
+    if (!track) return this.currentZoom;
+    try {
+      await track.applyConstraints({
+        advanced: [{
+          zoom: zoomValue
+        }]
+      });
+      this.currentZoom = zoomValue;
+      return this.currentZoom;
+    } catch {
+      return this.currentZoom;
+    }
+  }
+
+  /**
    * Stops all active media tracks and releases hardware camera resources immediately
    */
   stopCamera() {
     this.torchEnabled = false;
+    this.currentZoom = 1;
     if (this.stream) {
       for (const track of this.stream.getTracks()) {
         try {

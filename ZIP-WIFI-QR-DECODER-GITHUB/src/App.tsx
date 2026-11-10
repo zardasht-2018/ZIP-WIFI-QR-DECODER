@@ -8,8 +8,6 @@ import { ScannerPage } from './pages/ScannerPage';
 import { ResultsPage } from './pages/ResultsPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
-import { AccountPage } from './pages/AccountPage';
-import { authService, AuthSession } from './services/authService';
 import { DEFAULT_LANGUAGE, SupportedLanguage, TRANSLATIONS } from './i18n/translations';
 
 export default function App() {
@@ -18,7 +16,10 @@ export default function App() {
   const [history, setHistory] = useState<ScanHistoryEntry[]>(() => storageService.getHistory());
   const [currentResult, setCurrentResult] = useState<ParsedQRResult | null>(null);
   const [currentSourceLabel, setCurrentSourceLabel] = useState<string>('');
-  const [authSession, setAuthSession] = useState<AuthSession | null>(() => authService.getCurrentSession());
+  const [multiQrCandidates, setMultiQrCandidates] = useState<{
+    results: ParsedQRResult[];
+    sourceLabel: string;
+  } | null>(null);
   const [toast, setToast] = useState<{
     message: string;
     type: 'success' | 'info' | 'error';
@@ -33,6 +34,17 @@ export default function App() {
     document.documentElement.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
     document.title = 'ZIP QR — Wi-Fi QR Decoder';
   }, [language]);
+
+  useEffect(() => {
+    // Hydrate from persistent IndexedDB on mount and subscribe to updates
+    void storageService.initHistoryDatabase().then((entries) => {
+      setHistory(entries);
+    });
+    const unsubscribe = storageService.subscribe((entries) => {
+      setHistory(entries);
+    });
+    return unsubscribe;
+  }, []);
 
   const showNotification = (
     message: string,
@@ -51,13 +63,11 @@ export default function App() {
     const parsed = parseQRPayload(rawPayload);
     setCurrentResult(parsed);
     setCurrentSourceLabel(sourceLabel);
+    setMultiQrCandidates(null);
 
     if (settings.historyEnabled) {
       const updated = storageService.addHistoryEntry(parsed);
       setHistory(updated);
-      if (authSession) {
-        void authService.insertSyncedScanRecord(parsed, undefined, authSession.accessToken).catch(() => {});
-      }
     }
 
     setActivePage('results');
@@ -66,6 +76,16 @@ export default function App() {
     } else {
       showNotification(`${t.toastDecodedPayload} (${parsed.formatLabel})`, 'info');
     }
+  };
+
+  const handleMultipleDecodedPayloads = (payloads: string[], sourceLabel = 'Uploaded Image') => {
+    if (payloads.length === 1) {
+      handleDecodedPayload(payloads[0], sourceLabel);
+      return;
+    }
+    const parsedList = payloads.map((p) => parseQRPayload(p));
+    setMultiQrCandidates({ results: parsedList, sourceLabel });
+    showNotification(t.toastMultipleQrFound, 'info');
   };
 
   const handleUpdateSettings = (partial: Partial<AppSettings>) => {
@@ -117,17 +137,69 @@ export default function App() {
         </div>
       )}
 
+      {/* Multi-QR Selection Banner when an uploaded image contains 2+ QR codes */}
+      {multiQrCandidates && (
+        <div className="mx-auto mt-6 w-full max-w-4xl px-4 sm:px-6">
+          <div className="rounded-3xl border border-sky-500/50 bg-[#0c1428] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-black text-white">{t.multiQrTitle}</h2>
+                <p className="text-xs text-slate-300">{t.multiQrSubtitle}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMultiQrCandidates(null)}
+                className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-300"
+              >
+                {t.btnCancel}
+              </button>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {multiQrCandidates.results.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-slate-700 bg-[#070b16] p-4"
+                >
+                  <div className="min-w-0">
+                    <span
+                      dir="ltr"
+                      className="rounded border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold text-sky-300"
+                    >
+                      {item.category === 'WIFI' ? item.securityType : item.category}
+                    </span>
+                    <p dir="ltr" className="mt-1.5 truncate font-mono text-sm font-bold text-white">
+                      {item.ssid}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleDecodedPayload(item.rawPayload, multiQrCandidates.sourceLabel)
+                    }
+                    className="rounded-xl bg-gradient-to-r from-sky-500 to-purple-600 px-3.5 py-2 text-xs font-bold text-white shrink-0"
+                  >
+                    {t.btnSelectThisQr}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
         {activePage === 'home' && (
           <Home
             language={language}
             onNavigate={setActivePage}
             onDecodedPayload={handleDecodedPayload}
+            onMultipleDecodedPayloads={handleMultipleDecodedPayloads}
             onSelectHistoryResult={(res) => {
               setCurrentResult(res);
               setCurrentSourceLabel('Scan History');
               setActivePage('results');
             }}
+            onNotify={showNotification}
             recentHistory={history}
             onError={(msg) => showNotification(msg, 'error')}
           />
@@ -138,6 +210,7 @@ export default function App() {
             preferredCameraId={settings.preferredCameraId}
             language={language}
             onDetected={handleDecodedPayload}
+            onMultipleDetected={handleMultipleDecodedPayloads}
             onCancel={() => setActivePage('home')}
             onCameraChange={(deviceId) => handleUpdateSettings({ preferredCameraId: deviceId })}
           />
@@ -169,19 +242,6 @@ export default function App() {
             onDeleteEntry={handleDeleteHistoryEntry}
             onClearAll={handleClearAllHistory}
             onScanNow={() => setActivePage('scanner')}
-          />
-        )}
-
-        {activePage === 'account' && (
-          <AccountPage
-            language={language}
-            session={authSession}
-            onSessionChange={(next) => {
-              setAuthSession(next);
-              if (!next) {
-                setCurrentResult(null);
-              }
-            }}
             onNotify={showNotification}
           />
         )}

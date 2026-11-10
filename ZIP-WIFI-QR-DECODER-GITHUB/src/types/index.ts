@@ -58,12 +58,22 @@ export interface ParsedQRResult {
   warnings: string[];
 }
 
+/**
+ * Persistent Local History Record stored in IndexedDB (`zip_qr_local_db` -> `scan_history`).
+ * Stores the actual decoded Wi-Fi password locally on the user's browser profile so users
+ * can reveal and copy their saved Wi-Fi passwords across sessions, restarts, and app updates.
+ */
 export interface ScanHistoryEntry {
   id: string;
   timestamp: string;
   ssid: string;
-  category: QRPayloadCategory;
+  password: string | null;
+  hasPassword: boolean;
+  securityType: SecurityProtocol;
   securityDisplay: string;
+  hiddenNetwork: boolean;
+  category: QRPayloadCategory;
+  formatLabel: string;
   result: ParsedQRResult;
 }
 
@@ -76,4 +86,4 @@ export interface AppSettings {
   preferredCameraId: string;
 }
 
-export type ActivePage = 'home' | 'scanner' | 'results' | 'history' | 'account' | 'settings';
+export type ActivePage = 'home' | 'scanner' | 'results' | 'history' | 'settings';

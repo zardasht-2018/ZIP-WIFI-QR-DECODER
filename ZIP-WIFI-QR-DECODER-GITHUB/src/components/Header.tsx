@@ -24,7 +24,6 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'scanner', label: t.navScanner },
     { id: 'results', label: t.navResults },
     { id: 'history', label: t.navHistory, count: historyCount },
-    { id: 'account', label: t.navAccount },
     { id: 'settings', label: t.navSettings },
   ];
 

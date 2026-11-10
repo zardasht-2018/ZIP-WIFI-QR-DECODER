@@ -149,12 +149,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         </div>
       </section>
 
-      {/* Privacy & Security Architecture */}
+      {/* Privacy & Technical Transparency */}
       <section className="rounded-3xl border border-slate-800 bg-[#080d1a] p-6 space-y-4">
         <h2 className="text-sm font-bold uppercase tracking-widest text-sky-400">
           {t.privacyHeading}
         </h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 text-xs text-slate-300">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 text-xs text-slate-300">
           <div className="rounded-2xl border border-slate-800 bg-[#0b1222] p-4">
             <div className="font-bold text-white">{t.privacyCard1Title}</div>
             <p className="mt-1 text-slate-400">{t.privacyCard1Desc}</p>
@@ -162,6 +162,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           <div className="rounded-2xl border border-slate-800 bg-[#0b1222] p-4">
             <div className="font-bold text-white">{t.privacyCard2Title}</div>
             <p className="mt-1 text-slate-400">{t.privacyCard2Desc}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-800 bg-[#0b1222] p-4">
+            <div className="font-bold text-white">{t.privacyCard3Title}</div>
+            <p className="mt-1 text-slate-400">{t.privacyCard3Desc}</p>
           </div>
         </div>
 

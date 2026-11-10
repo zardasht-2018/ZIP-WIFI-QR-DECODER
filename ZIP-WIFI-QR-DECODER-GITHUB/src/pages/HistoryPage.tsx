@@ -12,6 +12,7 @@ interface HistoryPageProps {
   onDeleteEntry: (id: string) => void;
   onClearAll: () => void;
   onScanNow: () => void;
+  onNotify?: (message: string, type?: 'success' | 'info' | 'error') => void;
 }
 
 export const HistoryPage: React.FC<HistoryPageProps> = ({
@@ -23,6 +24,7 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
   onDeleteEntry,
   onClearAll,
   onScanNow,
+  onNotify,
 }) => {
   const t = TRANSLATIONS[language];
   const [searchQuery, setSearchQuery] = useState('');
@@ -34,7 +36,8 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
     return (
       item.ssid.toLowerCase().includes(q) ||
       item.category.toLowerCase().includes(q) ||
-      item.securityDisplay.toLowerCase().includes(q)
+      item.securityDisplay.toLowerCase().includes(q) ||
+      item.securityType.toLowerCase().includes(q)
     );
   });
 
@@ -42,6 +45,10 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex flex-col justify-between gap-4 rounded-3xl border border-slate-800 bg-[#080d1a] p-6 sm:flex-row sm:items-center">
         <div>
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-0.5 text-[11px] font-bold text-emerald-300">
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+            <span>{t.historyStorageBadge}</span>
+          </div>
           <h1 className="text-2xl font-black text-white">{t.historyTitle}</h1>
           <p className="mt-1 text-xs text-slate-400">{t.historySubtitle}</p>
         </div>
@@ -131,6 +138,7 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
               language={language}
               onSelect={onSelectResult}
               onDelete={onDeleteEntry}
+              onNotify={onNotify}
             />
           ))}
         </div>

@@ -8,6 +8,7 @@ interface ScannerProps {
   preferredCameraId?: string;
   language?: SupportedLanguage;
   onDetected: (rawPayload: string, sourceLabel?: string) => void;
+  onMultipleDetected?: (payloads: string[], sourceLabel?: string) => void;
   onCancel: () => void;
   onCameraChange?: (deviceId: string) => void;
 }
@@ -16,6 +17,7 @@ export const Scanner: React.FC<ScannerProps> = ({
   preferredCameraId,
   language = 'ckb',
   onDetected,
+  onMultipleDetected,
   onCancel,
   onCameraChange,
 }) => {
@@ -30,6 +32,13 @@ export const Scanner: React.FC<ScannerProps> = ({
   const [activeDeviceId, setActiveDeviceId] = useState<string>(preferredCameraId || '');
   const [torchSupported, setTorchSupported] = useState<boolean>(false);
   const [torchActive, setTorchActive] = useState<boolean>(false);
+  const [zoomSupported, setZoomSupported] = useState<boolean>(false);
+  const [zoomRange, setZoomRange] = useState<{ min: number; max: number; step: number }>({
+    min: 1,
+    max: 1,
+    step: 0.1,
+  });
+  const [currentZoom, setCurrentZoom] = useState<number>(1);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
 
@@ -98,10 +107,13 @@ export const Scanner: React.FC<ScannerProps> = ({
       setActiveDeviceId(info.activeDeviceId);
       setTorchSupported(info.torchSupported);
       setTorchActive(false);
+      setZoomSupported(info.zoomSupported);
+      setZoomRange({ min: info.zoomMin, max: info.zoomMax, step: info.zoomStep });
+      setCurrentZoom(info.currentZoom);
       setIsInitializing(false);
 
       const video = videoRef.current;
-      // Prefer requestVideoFrameCallback where supported, with adaptive 90ms throttle and non-overlapping lock
+      // Prefer requestVideoFrameCallback where supported, with adaptive 85ms throttle and non-overlapping lock
       if (video && 'requestVideoFrameCallback' in video) {
         let lastScanTime = 0;
         const onFrame = async (now: number) => {
@@ -150,9 +162,21 @@ export const Scanner: React.FC<ScannerProps> = ({
     void startLiveScanner(newDeviceId);
   };
 
+  const handleCycleCamera = () => {
+    if (cameras.length < 2) return;
+    const idx = cameras.findIndex((c) => c.deviceId === activeDeviceId);
+    const nextCam = cameras[(idx + 1) % cameras.length];
+    if (nextCam) handleCameraSwitch(nextCam.deviceId);
+  };
+
   const handleToggleTorch = async () => {
     const state = await cameraService.toggleTorch(!torchActive);
     setTorchActive(state);
+  };
+
+  const handleZoomChange = async (nextZoom: number) => {
+    setCurrentZoom(nextZoom);
+    await cameraService.setZoom(nextZoom);
   };
 
   return (
@@ -198,38 +222,62 @@ export const Scanner: React.FC<ScannerProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800/90 bg-[#0b1020] p-4">
           <div className="flex flex-wrap items-center gap-2">
             {cameras.length > 1 && (
-              <select
-                aria-label="Select Camera"
-                value={activeDeviceId}
-                onChange={(e) => handleCameraSwitch(e.target.value)}
-                className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-white"
-              >
-                {cameras.map((cam) => (
-                  <option key={cam.deviceId} value={cam.deviceId}>
-                    {cam.label}
-                  </option>
-                ))}
-              </select>
+              <>
+                <select
+                  aria-label="Select Camera"
+                  value={activeDeviceId}
+                  onChange={(e) => handleCameraSwitch(e.target.value)}
+                  className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-white"
+                >
+                  {cameras.map((cam) => (
+                    <option key={cam.deviceId} value={cam.deviceId}>
+                      {cam.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleCycleCamera}
+                  className="rounded-xl border border-sky-500/40 bg-sky-500/15 px-3 py-2 text-xs font-bold text-sky-300 hover:bg-sky-500/25"
+                >
+                  {t.btnSwitchCamera}
+                </button>
+              </>
             )}
 
-            <button
-              type="button"
-              disabled={!torchSupported}
-              onClick={handleToggleTorch}
-              className={`rounded-xl border px-3.5 py-2 text-xs font-bold uppercase tracking-wider transition ${
-                torchSupported
-                  ? torchActive
+            {/* Hardware Torch / Flashlight button — shown ONLY when hardware supports torch */}
+            {torchSupported && (
+              <button
+                type="button"
+                onClick={() => void handleToggleTorch()}
+                className={`rounded-xl border px-3.5 py-2 text-xs font-bold uppercase tracking-wider transition ${
+                  torchActive
                     ? 'border-amber-400 bg-amber-400/20 text-amber-200'
                     : 'border-slate-700 bg-slate-800 text-slate-200 hover:border-sky-400'
-                  : 'cursor-not-allowed border-slate-800 bg-slate-900/50 text-slate-600'
-              }`}
-            >
-              {torchSupported
-                ? torchActive
-                  ? t.flashlightOn
-                  : t.flashlightOff
-                : t.flashlightNA}
-            </button>
+                }`}
+              >
+                {torchActive ? t.flashlightOn : t.flashlightOff}
+              </button>
+            )}
+
+            {/* Hardware Zoom slider — shown ONLY when hardware supports zoom */}
+            {zoomSupported && (
+              <div className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-1.5">
+                <span className="text-[11px] font-bold text-slate-300">{t.zoomLabel}</span>
+                <input
+                  type="range"
+                  min={zoomRange.min}
+                  max={zoomRange.max}
+                  step={zoomRange.step}
+                  value={currentZoom}
+                  onChange={(e) => void handleZoomChange(Number(e.target.value))}
+                  className="h-1.5 w-24 accent-sky-400"
+                />
+                <span dir="ltr" className="font-mono text-[11px] text-sky-300">
+                  {currentZoom.toFixed(1)}x
+                </span>
+              </div>
+            )}
           </div>
 
           <button
@@ -252,6 +300,14 @@ export const Scanner: React.FC<ScannerProps> = ({
         onDecodedPayload={(payload, label) => {
           stopScanLoop();
           onDetected(payload, label);
+        }}
+        onMultipleDecodedPayloads={(payloads, label) => {
+          stopScanLoop();
+          if (onMultipleDetected) {
+            onMultipleDetected(payloads, label);
+          } else if (payloads[0]) {
+            onDetected(payloads[0], label);
+          }
         }}
         onError={(msg) => setCameraError(msg)}
       />

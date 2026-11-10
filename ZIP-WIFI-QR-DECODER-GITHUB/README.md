@@ -1,31 +1,38 @@
 # ZIP QR — Wi-Fi QR Decoder
 
-**SCAN. REVEAL. CONNECT.**
+**Tagline:** `SCAN. REVEAL. CONNECT.`  
+**Live Application:** [https://zip-wifi-qr-decoder.pages.dev/](https://zip-wifi-qr-decoder.pages.dev/)  
+**GitHub Repository:** [https://github.com/zardasht-2018/ZIP-WIFI-QR-DECODER](https://github.com/zardasht-2018/ZIP-WIFI-QR-DECODER)  
+**Developer & Creator:** Zardasht Muhammad ([zardashtmuhammad12@gmail.com](mailto:zardashtmuhammad12@gmail.com))
 
-- **Live Website**: [https://zip-wifi-qr-decoder.pages.dev/](https://zip-wifi-qr-decoder.pages.dev/)
-- **GitHub Repository**: [https://github.com/zardasht-2018/ZIP-WIFI-QR-DECODER](https://github.com/zardasht-2018/ZIP-WIFI-QR-DECODER)
-- **Created and developed by**: **Zardasht Muhammad** ([zardashtmuhammad12@gmail.com](mailto:zardashtmuhammad12@gmail.com))
-- **دروستکراو و پەرەپێدراوە لەلایەن زەردەشت محمد.**
+---
 
-## 1. Project Overview
-**ZIP QR — Wi-Fi QR Decoder** is a privacy-first, bilingual (**Kurdish Sorani `ckb` RTL** & **English `en` LTR**) Progressive Web Application (PWA) that decodes Wi-Fi QR codes locally in the browser and immediately extracts and displays the actual encoded **Wi-Fi password**, **SSID**, **encryption security type**, and **hidden network status**.
+## Overview
 
-## 2. Main Features
-- **Bilingual Kurdish Sorani & English Interface**:
-  - Defaults to **Kurdish Sorani (`ckb`, `dir="rtl"`)** for first-time visitors, with instant switching between **کوردی** and **English (`en`, `dir="ltr"`)** in the top navigation header and Settings page.
-  - Automatically persists the user's language choice in `localStorage` across sessions.
-  - Preserves strict LTR direction (`dir="ltr"`) for technical values (SSIDs, passwords, raw `WIFI:` / `DPP:` payloads, email addresses, and URLs) so credentials are never reversed in RTL mode.
-- **Three Clean Ways to Decode a QR Code**:
-  1. **SCAN QR CODE (`سکانکردنی کۆدی QR`)**: Live camera scanner via `navigator.mediaDevices.getUserMedia` with camera selector, flashlight toggle where supported, and automatic image-upload fallback.
-  2. **UPLOAD QR IMAGE (`بارکردنی وێنەی QR`)**: Local image decoding for **PNG**, **JPG**, **JPEG**, and **WEBP** via desktop drag-and-drop or mobile gallery selection.
-  3. **PASTE QR CONTENT (`لکاندنی ناوەڕۆکی QR`)**: Direct payload input for `WIFI:...;;` and `DPP:...;;` strings.
-- **Prominent Password Extraction & Controls**:
-  - Supports **WPA**, **WPA2**, **WPA3 / SAE**, **WPA2-EAP**, **WEP**, **Open (`nopass`)**, hidden networks, escaped characters (`\;`, `\,`, `\:`, `\\`, `\"`), and **Wi-Fi Easy Connect (`DPP:`)**.
-  - Includes **Show / Hide Password**, **Copy Password**, **Copy All Information**, and **Download Results (.TXT / .JSON)**.
-- **Developer & Creator Identity**:
-  - Dedicated Creator Card in the About section crediting **Zardasht Muhammad** (*Developer & Creator*) with a direct `mailto:zardashtmuhammad12@gmail.com` contact button.
+**ZIP QR — Wi-Fi QR Decoder** is a fast, privacy-first, bilingual (Kurdish Sorani `ckb` RTL & English `en` LTR) Progressive Web Application (PWA) that decodes Wi-Fi QR codes locally in the browser and reveals their exact encoded credentials—including the **Wi-Fi password**, **SSID**, **Security Type** (`WPA`, `WPA2`, `WPA3-SAE`, `WPA2-EAP`, `WEP`, `Open`, `DPP`), and **Hidden Network Status**.
 
-## 3. Development, Testing & Production Build
+- **No Login, No Registration, No Accounts:** Open the application and immediately use all features.
+- **Persistent Local IndexedDB History (`zip_qr_local_db`):** Saves scanned networks—including their **actual Wi-Fi passwords**—in local browser IndexedDB so your History survives closing the browser, restarting your phone/computer, and installing or updating the PWA.
+- **Masked Password Privacy (`••••••••`):** Saved passwords in History are masked by default and include per-record **Show/Hide Password** and **Copy Password** controls.
+- **100% Client-Side Privacy:** Camera streams, uploaded images, SSIDs, and passwords never leave your device.
+
+---
+
+## Core Features
+
+1. **Multi-Stage v4.0 QR Recognition Engine (`src/services/qrDecoder.ts`)**
+   - Hardware-accelerated `BarcodeDetector` (when supported) + `jsQR` (`attemptBoth`) + fast global threshold + 4-orientation (`0°/90°/180°/270°`) matrix sampling + inverted dark-mode recovery + integral-image Bradley-Roth local adaptive thresholding + 1:1:3:1:1 finder triad localization + percentile contrast stretch & 3x3 sharpening + exact Reed-Solomon GF(256) error correction.
+   - Detects multiple QR codes inside a single uploaded image and presents a clean selector modal.
+2. **Hardware-Aware Live Camera Scanner (`src/services/cameraService.ts`)**
+   - Prioritizes rear/environment cameras on mobile devices, uses `requestVideoFrameCallback` with a center ROI pass, and dynamically exposes **Flashlight (Torch)**, **Optical/Digital Zoom**, and **Camera Switch** controls only when supported by the device hardware.
+3. **Full Kurdish Sorani (`ckb`, RTL, Default) & English (`en`, LTR) Localization (`src/i18n/translations.ts`)**
+   - Instant language switching in the header and Settings page with automatic persistence.
+4. **Update-Safe PWA Service Worker (`public/sw.js` & `scripts/buildDist.cjs`)**
+   - Network-first HTML navigation, content-fingerprinted `/assets/index.<hash>.js` and `.css` bundles, automatic old cache cleanup, and zero interference with IndexedDB History.
+
+---
+
+## Local Development & Verification Commands
 
 ```bash
 npm ci
@@ -33,6 +40,9 @@ npm test
 npm run build
 ```
 
-- **Build command**: `npm run build`
-- **Build output directory**: `dist`
-- **Production branch**: `main`
+## Cloudflare Pages Deployment Settings
+
+- **Production branch:** `main`
+- **Root directory:** `ZIP-WIFI-QR-DECODER-GITHUB`
+- **Build command:** `npm run build`
+- **Build output directory:** `dist`

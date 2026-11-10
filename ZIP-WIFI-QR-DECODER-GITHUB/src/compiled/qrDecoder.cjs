@@ -3,24 +3,30 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.decodeAllQRCodesFromFile = decodeAllQRCodesFromFile;
+exports.decodeAllQRCodesFromSource = decodeAllQRCodesFromSource;
 exports.decodeQRFromFile = decodeQRFromFile;
 exports.decodeQRFromSource = decodeQRFromSource;
 exports.decodeQRModuleMatrix = decodeQRModuleMatrix;
+exports.extractAllQRCodesFromImageData = extractAllQRCodesFromImageData;
 exports.extractAndDecodeFromImageData = extractAndDecodeFromImageData;
 /**
- * ZIP QR — Wi-Fi QR Decoder — High-Speed Multi-Engine Local QR Code Decoder (v3.0)
+ * ZIP QR — Wi-Fi QR Decoder — Advanced Multi-Stage Local QR Code Recognition Engine (v4.0)
  *
  * Performs 100% client-side QR code decoding from:
  * 1. Live camera `<video>` frames (via `requestVideoFrameCallback` + ROI cropping + non-blocking lock)
- * 2. Uploaded PNG, JPG/JPEG, and WEBP image files
+ * 2. Uploaded PNG, JPG/JPEG, and WEBP image files (including multi-QR detection inside one image)
  * 3. Canvas `ImageData` buffers
  *
- * Multi-Stage Engine Cascade:
- * - Stage 0: Native `BarcodeDetector` API (hardware-accelerated when supported on Chrome/Android/macOS)
+ * Progressive Multi-Stage Recognition Pipeline (Fastest & Least Destructive First):
+ * - Stage 0: Native `BarcodeDetector` API (hardware-accelerated when supported on Chrome/Edge/Android/macOS)
  * - Stage 1: `jsQR` (with `inversionAttempts: 'attemptBoth'`)
- * - Stage 2: Fast Global Contrast + Tight Bounding-Box Grid Sampling + 4-Orientation Matrix Rotation
- * - Stage 3: Integral-Image Adaptive Thresholding (`binarizeAdaptive`) + 1:1:3:1:1 Finder Pattern
- *            Triad Localization (`locateFinderBoundingBox`) + Inverted Polarity Recovery +
+ * - Stage 2: Fast Global Mid-Luminance Threshold + Tight Bounding-Box Grid Sampling + 4-Orientation Matrix Rotation
+ * - Stage 3: Inverted Global Polarity Recovery (light QR on dark background)
+ * - Stage 4: Percentile Histogram Contrast Stretch (1st–99th percentile normalization) + 3x3 Unsharp/Laplacian Sharpening
+ *            for low-contrast or blurry QR images
+ * - Stage 5: Multi-Threshold Integral-Image Adaptive Binarization (`binarizeAdaptive` with multiple bias levels) +
+ *            1:1:3:1:1 Finder Pattern Triad Localization (`locateFinderBoundingBox`) +
  *            Exact Reed-Solomon GF(256) Berlekamp-Massey / Chien / Forney Error Correction
  */
 
@@ -128,8 +134,6 @@ function reedSolomonCorrect(codewords, ecLength) {
   if (!hasErrors) {
     return codewords.slice(0, n - ecLength);
   }
-
-  // Standard Berlekamp-Massey tracking formal degree L
   let C = new Uint8Array(ecLength + 1);
   let B = new Uint8Array(ecLength + 1);
   C[0] = 1;
@@ -164,8 +168,6 @@ function reedSolomonCorrect(codewords, ecLength) {
   }
   if (L * 2 > ecLength) return null;
   const sigma = C.slice(0, L + 1);
-
-  // Chien search to locate roots of sigma(x)
   const errorLocations = [];
   for (let i = 0; i < n; i++) {
     const xInv = GF_EXP[(255 - i) % 255];
@@ -180,8 +182,6 @@ function reedSolomonCorrect(codewords, ecLength) {
     }
   }
   if (errorLocations.length !== L) return null;
-
-  // Error evaluator polynomial omega(x) = S(x) * sigma(x) mod x^ecLength
   const omega = new Uint8Array(ecLength);
   for (let i = 0; i < ecLength; i++) {
     let sum = 0;
@@ -190,8 +190,6 @@ function reedSolomonCorrect(codewords, ecLength) {
     }
     omega[i] = sum;
   }
-
-  // Forney algorithm: e_k = X_k * Omega(X_k^-1) / Sigma'(X_k^-1) (since FCR = 0 for QR codes)
   const corrected = new Uint8Array(codewords);
   for (const pos of errorLocations) {
     const power = n - 1 - pos;
@@ -214,8 +212,6 @@ function reedSolomonCorrect(codewords, ecLength) {
     const errMag = gfMul(xk, gfDiv(num, den));
     corrected[pos] ^= errMag;
   }
-
-  // Verify all syndromes are now zero
   for (let i = 0; i < ecLength; i++) {
     let sum = 0;
     const alphaI = GF_EXP[i];
@@ -395,7 +391,6 @@ function rotateMatrix90(matrix) {
 function hasFinderAtCorner(matrix, r0, c0) {
   const N = matrix.length;
   if (r0 + 6 >= N || c0 + 6 >= N) return false;
-  // Center 3x3 should have majority dark, ring at offset 1 should have majority light, outer ring majority dark
   let centerDark = 0;
   for (let r = r0 + 2; r <= r0 + 4; r++) {
     for (let c = c0 + 2; c <= c0 + 4; c++) {
@@ -451,8 +446,6 @@ function decodeQRModuleMatrix(matrix) {
   if (m1) addCand(m1.ecIndex, m1.mask);
   const m2 = decodeFormatInfo(fmt1Rev, fmt2Rev);
   if (m2) addCand(m2.ecIndex, m2.mask);
-
-  // Only fall back to brute-forcing all 32 format combinations if format bits were unreadable
   if (candidates.length === 0) {
     for (let ecIndex = 0; ecIndex < 4; ecIndex++) {
       for (let mask = 0; mask < 8; mask++) {
@@ -561,10 +554,57 @@ function decodeQRModuleMatrix(matrix) {
 }
 
 /**
+ * Percentile contrast normalization + 3x3 unsharp Laplacian kernel for blurry or low-contrast QR codes
+ */
+function enhanceAndSharpenGray(gray, width, height) {
+  const hist = new Uint32Array(256);
+  const total = width * height;
+  for (let i = 0; i < total; i++) hist[gray[i]]++;
+  const lowTarget = Math.floor(total * 0.02);
+  const highTarget = Math.floor(total * 0.98);
+  let acc = 0;
+  let pLow = 0;
+  let pHigh = 255;
+  for (let i = 0; i < 256; i++) {
+    acc += hist[i];
+    if (acc >= lowTarget) {
+      pLow = i;
+      break;
+    }
+  }
+  acc = 0;
+  for (let i = 255; i >= 0; i--) {
+    acc += hist[i];
+    if (acc >= total - highTarget) {
+      pHigh = i;
+      break;
+    }
+  }
+  const span = Math.max(1, pHigh - pLow);
+  const stretched = new Uint8Array(total);
+  for (let i = 0; i < total; i++) {
+    const v = (gray[i] - pLow) * 255 / span;
+    stretched[i] = v <= 0 ? 0 : v >= 255 ? 255 : v | 0;
+  }
+
+  // Apply 3x3 sharpening kernel: [0, -1, 0, -1, 5, -1, 0, -1, 0]
+  const out = new Uint8Array(stretched);
+  for (let y = 1; y < height - 1; y++) {
+    const row = y * width;
+    for (let x = 1; x < width - 1; x++) {
+      const idx = row + x;
+      const val = 5 * stretched[idx] - stretched[idx - 1] - stretched[idx + 1] - stretched[idx - width] - stretched[idx + width];
+      out[idx] = val <= 0 ? 0 : val >= 255 ? 255 : val;
+    }
+  }
+  return out;
+}
+
+/**
  * Computes an integral image and performs fast Bradley-Roth local adaptive thresholding
  * to handle low-light gradients, shadows, and uneven illumination.
  */
-function binarizeAdaptive(gray, width, height, invert = false) {
+function binarizeAdaptive(gray, width, height, invert = false, bias = 5) {
   const integral = new Int32Array((width + 1) * (height + 1));
   for (let y = 0; y < height; y++) {
     let rowSum = 0;
@@ -590,7 +630,7 @@ function binarizeAdaptive(gray, width, height, invert = false) {
       const area = (x1 - x0 + 1) * (y1 - y0 + 1);
       const sum = integral[r1 + x1 + 1] - integral[r0 + x1 + 1] - integral[r1 + x0] + integral[r0 + x0];
       const localMean = sum / area;
-      const isDark = gray[yOff + x] < localMean - 5;
+      const isDark = gray[yOff + x] < localMean - bias;
       bin[yOff + x] = (invert ? !isDark : isDark) ? 1 : 0;
     }
   }
@@ -697,8 +737,6 @@ function locateFinderBoundingBox(bin, width, height) {
     }
   }
   if (centers.length < 3) return null;
-
-  // Group compatible finder triads with similar span
   centers.sort((a, b) => b.span - a.span);
   const refSpan = centers[0].span;
   const cluster = centers.filter(c => Math.abs(c.span - refSpan) <= refSpan * 0.45);
@@ -716,8 +754,6 @@ function locateFinderBoundingBox(bin, width, height) {
     if (c.cy + half > maxY) maxY = Math.min(height - 1, Math.ceil(c.cy + half));
     spanSum += c.span;
   }
-
-  // Refine tight edges inside the localized region
   const rMinX = Math.max(0, minX - 2);
   const rMaxX = Math.min(width - 1, maxX + 2);
   const rMinY = Math.max(0, minY - 2);
@@ -763,8 +799,6 @@ function sampleAndDecodeBoundingBox(bin, width, height, minX, maxX, minY, maxY, 
       if (estVer + dv >= 1 && estVer + dv <= 15) candidateVersions.add(estVer + dv);
     }
   }
-
-  // Also estimate from top-left run length
   let topRun = 0;
   for (let x = minX; x <= maxX; x++) {
     if (bin[minY * width + x] === 1) topRun++;else if (topRun > 0) break;
@@ -794,8 +828,6 @@ function sampleAndDecodeBoundingBox(bin, width, height, minX, maxX, minY, maxY, 
         baseMatrix[r][c] = bin[rowOff + sampleX] === 1;
       }
     }
-
-    // Try 0°, 90°, 180°, and 270° orientations (only decoding orientations where 3 corners have finder patterns)
     let rot = baseMatrix;
     for (let angle = 0; angle < 4; angle++) {
       if (angle > 0) rot = rotateMatrix90(rot);
@@ -809,11 +841,12 @@ function sampleAndDecodeBoundingBox(bin, width, height, minX, maxX, minY, maxY, 
 }
 
 /**
- * Extracts and decodes a QR code from an `ImageData` buffer using a fast multi-pass pipeline:
- * - Pass 1: Global `jsQR` (with `inversionAttempts: 'attemptBoth'`) if available in browser
- * - Pass 2: Fast global mid-luminance threshold + tight bounding box + 4-orientation matrix decoder
- * - Pass 3: Inverted global polarity (white QR on dark background)
- * - Pass 4: Integral-image local adaptive thresholding + 1:1:3:1:1 finder pattern localization (for low light, shadows, & cluttered camera frames)
+ * Extracts and decodes a QR code from an `ImageData` buffer using a progressive multi-stage pipeline:
+ * - Stage 1: Global `jsQR` (with `inversionAttempts: 'attemptBoth'`) if available in browser
+ * - Stage 2: Fast global mid-luminance threshold + tight bounding box + 4-orientation matrix decoder
+ * - Stage 3: Inverted global polarity (white QR on dark background)
+ * - Stage 4: Integral-image local adaptive thresholding + 1:1:3:1:1 finder pattern localization
+ * - Stage 5: Percentile contrast stretch + 3x3 sharpening + multi-threshold adaptive recovery
  */
 function extractAndDecodeFromImageData(imageData) {
   const {
@@ -823,7 +856,7 @@ function extractAndDecodeFromImageData(imageData) {
   } = imageData;
   if (width < 21 || height < 21) return null;
 
-  // Pass 1: Global jsQR (when loaded)
+  // Stage 1: Global jsQR (when loaded)
   const globalWindow = typeof window !== 'undefined' ? window : {};
   if (typeof globalWindow.jsQR === 'function') {
     try {
@@ -849,10 +882,10 @@ function extractAndDecodeFromImageData(imageData) {
     if (lum < minLum) minLum = lum;
     if (lum > maxLum) maxLum = lum;
   }
-  if (maxLum - minLum < 12) return null;
+  if (maxLum - minLum < 8) return null;
   const midThreshold = minLum + maxLum >> 1;
 
-  // Pass 2: Fast Global Threshold (Normal Polarity)
+  // Stage 2: Fast Global Threshold (Normal Polarity)
   const binNormal = new Uint8Array(totalPixels);
   let minX = width,
     maxX = -1,
@@ -873,8 +906,6 @@ function extractAndDecodeFromImageData(imageData) {
   if (maxX > minX && maxY > minY) {
     const fastRes = sampleAndDecodeBoundingBox(binNormal, width, height, minX, maxX, minY, maxY);
     if (fastRes) return fastRes;
-
-    // If global bounding box had background clutter, locate the 3 finder patterns inside binNormal
     const finderBox = locateFinderBoundingBox(binNormal, width, height);
     if (finderBox) {
       const locRes = sampleAndDecodeBoundingBox(binNormal, width, height, finderBox.minX, finderBox.maxX, finderBox.minY, finderBox.maxY, finderBox.avgFinderSpan);
@@ -882,7 +913,7 @@ function extractAndDecodeFromImageData(imageData) {
     }
   }
 
-  // Pass 3: Inverted Polarity (Light QR on Dark Background)
+  // Stage 3: Inverted Polarity (Light QR on Dark Background)
   const binInverted = new Uint8Array(totalPixels);
   let invMinX = width,
     invMaxX = -1,
@@ -905,8 +936,8 @@ function extractAndDecodeFromImageData(imageData) {
     if (invRes) return invRes;
   }
 
-  // Pass 4: Integral-Image Local Adaptive Thresholding (Low-Light, Uneven Gradients, Shadows, & Blur)
-  const binAdaptive = binarizeAdaptive(gray, width, height, false);
+  // Stage 4: Integral-Image Local Adaptive Thresholding (Low-Light, Uneven Gradients, Shadows)
+  const binAdaptive = binarizeAdaptive(gray, width, height, false, 5);
   const adapFinderBox = locateFinderBoundingBox(binAdaptive, width, height);
   if (adapFinderBox) {
     const adapRes = sampleAndDecodeBoundingBox(binAdaptive, width, height, adapFinderBox.minX, adapFinderBox.maxX, adapFinderBox.minY, adapFinderBox.maxY, adapFinderBox.avgFinderSpan);
@@ -931,7 +962,66 @@ function extractAndDecodeFromImageData(imageData) {
     const adapFallback = sampleAndDecodeBoundingBox(binAdaptive, width, height, aMinX, aMaxX, aMinY, aMaxY);
     if (adapFallback) return adapFallback;
   }
+
+  // Stage 5: Percentile Contrast Stretch + 3x3 Sharpening + Alternative Adaptive Threshold
+  const sharpened = enhanceAndSharpenGray(gray, width, height);
+  const binSharpened = binarizeAdaptive(sharpened, width, height, false, 8);
+  const sharpFinder = locateFinderBoundingBox(binSharpened, width, height);
+  if (sharpFinder) {
+    const sharpRes = sampleAndDecodeBoundingBox(binSharpened, width, height, sharpFinder.minX, sharpFinder.maxX, sharpFinder.minY, sharpFinder.maxY, sharpFinder.avgFinderSpan);
+    if (sharpRes) return sharpRes;
+  }
   return null;
+}
+
+/**
+ * Detects ALL distinct QR codes present inside an `ImageData` buffer (e.g. side-by-side or stacked QR codes
+ * in an uploaded screenshot or comparison sheet).
+ */
+function extractAllQRCodesFromImageData(imageData) {
+  const results = [];
+  const addUnique = val => {
+    if (val && !results.includes(val)) {
+      results.push(val);
+    }
+  };
+
+  // 1. Try whole image first
+  const primary = extractAndDecodeFromImageData(imageData);
+  addUnique(primary);
+  const {
+    data,
+    width,
+    height
+  } = imageData;
+  if (width >= 48 && height >= 48) {
+    // 2. Check left & right halves if image is wide enough to hold side-by-side QR codes
+    const midX = Math.floor(width / 2);
+    const cropRegion = (x0, y0, rw, rh) => {
+      const buf = new Uint8ClampedArray(rw * rh * 4);
+      for (let y = 0; y < rh; y++) {
+        const srcStart = ((y0 + y) * width + x0) * 4;
+        buf.set(data.subarray(srcStart, srcStart + rw * 4), y * rw * 4);
+      }
+      return {
+        data: buf,
+        width: rw,
+        height: rh
+      };
+    };
+    if (midX >= 25) {
+      addUnique(extractAndDecodeFromImageData(cropRegion(0, 0, midX, height)));
+      addUnique(extractAndDecodeFromImageData(cropRegion(midX, 0, width - midX, height)));
+    }
+
+    // 3. Check top & bottom halves if image is tall enough to hold stacked QR codes
+    const midY = Math.floor(height / 2);
+    if (midY >= 25) {
+      addUnique(extractAndDecodeFromImageData(cropRegion(0, 0, width, midY)));
+      addUnique(extractAndDecodeFromImageData(cropRegion(0, midY, width, height - midY)));
+    }
+  }
+  return results;
 }
 
 // Reusable singleton BarcodeDetector & reusable offscreen canvas to avoid per-frame GC allocations
@@ -944,13 +1034,7 @@ function getSharedCanvas() {
   }
   return sharedDecodeCanvas;
 }
-
-/**
- * Decodes a QR code from an `HTMLImageElement`, `HTMLVideoElement`, or `HTMLCanvasElement`
- * using a fast ROI-first strategy for live video frames and multi-scale recovery for uploaded images.
- */
-async function decodeQRFromSource(source) {
-  // 1. Hardware-accelerated native BarcodeDetector (singleton instance)
+function getBarcodeDetector() {
   if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
     if (!barcodeDetectorChecked) {
       barcodeDetectorChecked = true;
@@ -963,15 +1047,24 @@ async function decodeQRFromSource(source) {
         cachedBarcodeDetector = null;
       }
     }
-    if (cachedBarcodeDetector) {
-      try {
-        const results = await cachedBarcodeDetector.detect(source);
-        if (results && results.length > 0 && results[0].rawValue) {
-          return results[0].rawValue;
-        }
-      } catch {
-        // Fall through to canvas decoder
+  }
+  return cachedBarcodeDetector;
+}
+
+/**
+ * Decodes a QR code from an `HTMLImageElement`, `HTMLVideoElement`, or `HTMLCanvasElement`
+ * using a fast ROI-first strategy for live video frames and multi-scale recovery for uploaded images.
+ */
+async function decodeQRFromSource(source) {
+  const detector = getBarcodeDetector();
+  if (detector) {
+    try {
+      const results = await detector.detect(source);
+      if (results && results.length > 0 && results[0].rawValue) {
+        return results[0].rawValue;
       }
+    } catch {
+      // Fall through to canvas decoder
     }
   }
   const canvas = getSharedCanvas();
@@ -1040,6 +1133,52 @@ async function decodeQRFromSource(source) {
 }
 
 /**
+ * Decodes all QR codes present in an uploaded image element or canvas
+ */
+async function decodeAllQRCodesFromSource(source) {
+  const unique = [];
+  const add = val => {
+    if (val && !unique.includes(val)) unique.push(val);
+  };
+  const detector = getBarcodeDetector();
+  if (detector) {
+    try {
+      const results = await detector.detect(source);
+      if (results && results.length > 0) {
+        for (const r of results) add(r.rawValue);
+      }
+    } catch {
+      // ignore
+    }
+  }
+  const canvas = getSharedCanvas();
+  const w = typeof HTMLImageElement !== 'undefined' && source instanceof HTMLImageElement ? source.naturalWidth || source.width : source.width;
+  const h = typeof HTMLImageElement !== 'undefined' && source instanceof HTMLImageElement ? source.naturalHeight || source.height : source.height;
+  if (w > 0 && h > 0) {
+    const ctx = canvas.getContext('2d', {
+      willReadFrequently: true
+    });
+    if (ctx) {
+      const maxDim = Math.max(w, h);
+      const scale = maxDim < 180 ? 2.0 : Math.min(1, 900 / maxDim);
+      const sw = Math.max(21, Math.round(w * scale));
+      const sh = Math.max(21, Math.round(h * scale));
+      canvas.width = sw;
+      canvas.height = sh;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, sw, sh);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(source, 0, 0, sw, sh);
+      const imgData = ctx.getImageData(0, 0, sw, sh);
+      for (const found of extractAllQRCodesFromImageData(imgData)) {
+        add(found);
+      }
+    }
+  }
+  return unique;
+}
+
+/**
  * Decodes an uploaded image File (PNG, JPG/JPEG, WEBP) into a raw QR payload string.
  */
 function decodeQRFromFile(file) {
@@ -1061,6 +1200,41 @@ function decodeQRFromFile(file) {
           const payload = await decodeQRFromSource(img);
           if (payload) {
             resolve(payload);
+          } else {
+            reject(new Error('No valid QR code was detected in this image. Ensure the QR code is clear and well-lit.'));
+          }
+        } catch (err) {
+          reject(err instanceof Error ? err : new Error('QR decoding error.'));
+        }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Decodes one or more QR codes from an uploaded image File (supporting multi-QR selection)
+ */
+function decodeAllQRCodesFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'image/bmp'];
+    const ext = file.name.toLowerCase().split('.').pop() || '';
+    const allowedExts = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'];
+    if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
+      reject(new Error('Unsupported file format. Please upload a PNG, JPG/JPEG, or WEBP image.'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Failed to read the selected image file.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('The selected file is not a valid image.'));
+      img.onload = async () => {
+        try {
+          const payloads = await decodeAllQRCodesFromSource(img);
+          if (payloads.length > 0) {
+            resolve(payloads);
           } else {
             reject(new Error('No valid QR code was detected in this image. Ensure the QR code is clear and well-lit.'));
           }

@@ -6,10 +6,27 @@
  * 2. Proactively checks `registration.update()` on page load, tab visibility focus, and online restore.
  * 3. Detects waiting/installing Service Workers, signals `SKIP_WAITING`, and performs a single
  *    controlled reload (`controllerchange`) guarded against reload loops.
- * 4. Preserves all `localStorage` scan history and user settings across updates.
+ * 4. Preserves all IndexedDB (`zip_qr_local_db`) scan history, saved Wi-Fi passwords, and user settings across updates.
  */
 
-const RELOAD_GUARD_KEY = 'zip_qr_sw_reload_guard_v1';
+export const RELOAD_GUARD_KEY = 'zip_qr_sw_reload_guard_v1';
+
+/**
+ * Checks whether a `controllerchange` page reload should be permitted (10-second loop guard)
+ */
+export function shouldAllowControllerReload(nowMs = Date.now()): boolean {
+  try {
+    if (typeof sessionStorage === 'undefined') return true;
+    const lastReload = Number(sessionStorage.getItem(RELOAD_GUARD_KEY) || '0');
+    if (nowMs - lastReload < 10000) {
+      return false;
+    }
+    sessionStorage.setItem(RELOAD_GUARD_KEY, String(nowMs));
+    return true;
+  } catch {
+    return true;
+  }
+}
 
 export function registerServiceWorkerWithUpdates(
   onUpdateNotification?: (message: string) => void
@@ -31,16 +48,8 @@ export function registerServiceWorkerWithUpdates(
     if (isRefreshing) return;
     isRefreshing = true;
 
-    // Prevent reload loops within the same 10-second window
-    try {
-      const lastReload = Number(sessionStorage.getItem(RELOAD_GUARD_KEY) || '0');
-      const now = Date.now();
-      if (now - lastReload < 10000) {
-        return;
-      }
-      sessionStorage.setItem(RELOAD_GUARD_KEY, String(now));
-    } catch {
-      // sessionStorage unavailable
+    if (!shouldAllowControllerReload(Date.now())) {
+      return;
     }
 
     if (onUpdateNotification) {

@@ -1,9 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { decodeQRFromFile } from '../services/qrDecoder';
+import { decodeAllQRCodesFromFile } from '../services/qrDecoder';
 import { SupportedLanguage, TRANSLATIONS } from '../i18n/translations';
 
 interface UploadButtonProps {
   onDecodedPayload: (rawPayload: string, sourceLabel?: string) => void;
+  onMultipleDecodedPayloads?: (payloads: string[], sourceLabel?: string) => void;
   onError: (message: string) => void;
   variant?: 'primary' | 'secondary' | 'dropzone';
   label?: string;
@@ -12,6 +13,7 @@ interface UploadButtonProps {
 
 export const UploadButton: React.FC<UploadButtonProps> = ({
   onDecodedPayload,
+  onMultipleDecodedPayloads,
   onError,
   variant = 'secondary',
   label,
@@ -28,8 +30,15 @@ export const UploadButton: React.FC<UploadButtonProps> = ({
     if (!file) return;
     setIsProcessing(true);
     try {
-      const payload = await decodeQRFromFile(file);
-      onDecodedPayload(payload, `Uploaded Image (${file.name})`);
+      const payloads = await decodeAllQRCodesFromFile(file);
+      const sourceLabel = `Uploaded Image (${file.name})`;
+      if (payloads.length > 1 && onMultipleDecodedPayloads) {
+        onMultipleDecodedPayloads(payloads, sourceLabel);
+      } else if (payloads.length > 0) {
+        onDecodedPayload(payloads[0], sourceLabel);
+      } else {
+        onError(t.toastDecodeError);
+      }
     } catch {
       onError(t.toastDecodeError);
     } finally {

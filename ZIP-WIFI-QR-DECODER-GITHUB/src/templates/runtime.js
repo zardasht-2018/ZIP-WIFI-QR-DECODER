@@ -1,3 +1,6 @@
+// =========================================================================
+// ZIP QR — Wi-Fi QR Decoder — Production Client-Side Runtime (v4.0)
+// =========================================================================
 /**
  * ZIP WiFi QR Decoder — Wi-Fi & Multi-Format QR Payload Parser
  *
@@ -597,19 +600,22 @@ function parseQRPayload(rawInput) {
 }
 
 /**
- * ZIP QR — Wi-Fi QR Decoder — High-Speed Multi-Engine Local QR Code Decoder (v3.0)
+ * ZIP QR — Wi-Fi QR Decoder — Advanced Multi-Stage Local QR Code Recognition Engine (v4.0)
  *
  * Performs 100% client-side QR code decoding from:
  * 1. Live camera `<video>` frames (via `requestVideoFrameCallback` + ROI cropping + non-blocking lock)
- * 2. Uploaded PNG, JPG/JPEG, and WEBP image files
+ * 2. Uploaded PNG, JPG/JPEG, and WEBP image files (including multi-QR detection inside one image)
  * 3. Canvas `ImageData` buffers
  *
- * Multi-Stage Engine Cascade:
- * - Stage 0: Native `BarcodeDetector` API (hardware-accelerated when supported on Chrome/Android/macOS)
+ * Progressive Multi-Stage Recognition Pipeline (Fastest & Least Destructive First):
+ * - Stage 0: Native `BarcodeDetector` API (hardware-accelerated when supported on Chrome/Edge/Android/macOS)
  * - Stage 1: `jsQR` (with `inversionAttempts: 'attemptBoth'`)
- * - Stage 2: Fast Global Contrast + Tight Bounding-Box Grid Sampling + 4-Orientation Matrix Rotation
- * - Stage 3: Integral-Image Adaptive Thresholding (`binarizeAdaptive`) + 1:1:3:1:1 Finder Pattern
- *            Triad Localization (`locateFinderBoundingBox`) + Inverted Polarity Recovery +
+ * - Stage 2: Fast Global Mid-Luminance Threshold + Tight Bounding-Box Grid Sampling + 4-Orientation Matrix Rotation
+ * - Stage 3: Inverted Global Polarity Recovery (light QR on dark background)
+ * - Stage 4: Percentile Histogram Contrast Stretch (1st–99th percentile normalization) + 3x3 Unsharp/Laplacian Sharpening
+ *            for low-contrast or blurry QR images
+ * - Stage 5: Multi-Threshold Integral-Image Adaptive Binarization (`binarizeAdaptive` with multiple bias levels) +
+ *            1:1:3:1:1 Finder Pattern Triad Localization (`locateFinderBoundingBox`) +
  *            Exact Reed-Solomon GF(256) Berlekamp-Massey / Chien / Forney Error Correction
  */
 
@@ -717,8 +723,6 @@ function reedSolomonCorrect(codewords, ecLength) {
   if (!hasErrors) {
     return codewords.slice(0, n - ecLength);
   }
-
-  // Standard Berlekamp-Massey tracking formal degree L
   let C = new Uint8Array(ecLength + 1);
   let B = new Uint8Array(ecLength + 1);
   C[0] = 1;
@@ -753,8 +757,6 @@ function reedSolomonCorrect(codewords, ecLength) {
   }
   if (L * 2 > ecLength) return null;
   const sigma = C.slice(0, L + 1);
-
-  // Chien search to locate roots of sigma(x)
   const errorLocations = [];
   for (let i = 0; i < n; i++) {
     const xInv = GF_EXP[(255 - i) % 255];
@@ -769,8 +771,6 @@ function reedSolomonCorrect(codewords, ecLength) {
     }
   }
   if (errorLocations.length !== L) return null;
-
-  // Error evaluator polynomial omega(x) = S(x) * sigma(x) mod x^ecLength
   const omega = new Uint8Array(ecLength);
   for (let i = 0; i < ecLength; i++) {
     let sum = 0;
@@ -779,8 +779,6 @@ function reedSolomonCorrect(codewords, ecLength) {
     }
     omega[i] = sum;
   }
-
-  // Forney algorithm: e_k = X_k * Omega(X_k^-1) / Sigma'(X_k^-1) (since FCR = 0 for QR codes)
   const corrected = new Uint8Array(codewords);
   for (const pos of errorLocations) {
     const power = n - 1 - pos;
@@ -803,8 +801,6 @@ function reedSolomonCorrect(codewords, ecLength) {
     const errMag = gfMul(xk, gfDiv(num, den));
     corrected[pos] ^= errMag;
   }
-
-  // Verify all syndromes are now zero
   for (let i = 0; i < ecLength; i++) {
     let sum = 0;
     const alphaI = GF_EXP[i];
@@ -984,7 +980,6 @@ function rotateMatrix90(matrix) {
 function hasFinderAtCorner(matrix, r0, c0) {
   const N = matrix.length;
   if (r0 + 6 >= N || c0 + 6 >= N) return false;
-  // Center 3x3 should have majority dark, ring at offset 1 should have majority light, outer ring majority dark
   let centerDark = 0;
   for (let r = r0 + 2; r <= r0 + 4; r++) {
     for (let c = c0 + 2; c <= c0 + 4; c++) {
@@ -1040,8 +1035,6 @@ function decodeQRModuleMatrix(matrix) {
   if (m1) addCand(m1.ecIndex, m1.mask);
   const m2 = decodeFormatInfo(fmt1Rev, fmt2Rev);
   if (m2) addCand(m2.ecIndex, m2.mask);
-
-  // Only fall back to brute-forcing all 32 format combinations if format bits were unreadable
   if (candidates.length === 0) {
     for (let ecIndex = 0; ecIndex < 4; ecIndex++) {
       for (let mask = 0; mask < 8; mask++) {
@@ -1150,10 +1143,57 @@ function decodeQRModuleMatrix(matrix) {
 }
 
 /**
+ * Percentile contrast normalization + 3x3 unsharp Laplacian kernel for blurry or low-contrast QR codes
+ */
+function enhanceAndSharpenGray(gray, width, height) {
+  const hist = new Uint32Array(256);
+  const total = width * height;
+  for (let i = 0; i < total; i++) hist[gray[i]]++;
+  const lowTarget = Math.floor(total * 0.02);
+  const highTarget = Math.floor(total * 0.98);
+  let acc = 0;
+  let pLow = 0;
+  let pHigh = 255;
+  for (let i = 0; i < 256; i++) {
+    acc += hist[i];
+    if (acc >= lowTarget) {
+      pLow = i;
+      break;
+    }
+  }
+  acc = 0;
+  for (let i = 255; i >= 0; i--) {
+    acc += hist[i];
+    if (acc >= total - highTarget) {
+      pHigh = i;
+      break;
+    }
+  }
+  const span = Math.max(1, pHigh - pLow);
+  const stretched = new Uint8Array(total);
+  for (let i = 0; i < total; i++) {
+    const v = (gray[i] - pLow) * 255 / span;
+    stretched[i] = v <= 0 ? 0 : v >= 255 ? 255 : v | 0;
+  }
+
+  // Apply 3x3 sharpening kernel: [0, -1, 0, -1, 5, -1, 0, -1, 0]
+  const out = new Uint8Array(stretched);
+  for (let y = 1; y < height - 1; y++) {
+    const row = y * width;
+    for (let x = 1; x < width - 1; x++) {
+      const idx = row + x;
+      const val = 5 * stretched[idx] - stretched[idx - 1] - stretched[idx + 1] - stretched[idx - width] - stretched[idx + width];
+      out[idx] = val <= 0 ? 0 : val >= 255 ? 255 : val;
+    }
+  }
+  return out;
+}
+
+/**
  * Computes an integral image and performs fast Bradley-Roth local adaptive thresholding
  * to handle low-light gradients, shadows, and uneven illumination.
  */
-function binarizeAdaptive(gray, width, height, invert = false) {
+function binarizeAdaptive(gray, width, height, invert = false, bias = 5) {
   const integral = new Int32Array((width + 1) * (height + 1));
   for (let y = 0; y < height; y++) {
     let rowSum = 0;
@@ -1179,7 +1219,7 @@ function binarizeAdaptive(gray, width, height, invert = false) {
       const area = (x1 - x0 + 1) * (y1 - y0 + 1);
       const sum = integral[r1 + x1 + 1] - integral[r0 + x1 + 1] - integral[r1 + x0] + integral[r0 + x0];
       const localMean = sum / area;
-      const isDark = gray[yOff + x] < localMean - 5;
+      const isDark = gray[yOff + x] < localMean - bias;
       bin[yOff + x] = (invert ? !isDark : isDark) ? 1 : 0;
     }
   }
@@ -1286,8 +1326,6 @@ function locateFinderBoundingBox(bin, width, height) {
     }
   }
   if (centers.length < 3) return null;
-
-  // Group compatible finder triads with similar span
   centers.sort((a, b) => b.span - a.span);
   const refSpan = centers[0].span;
   const cluster = centers.filter(c => Math.abs(c.span - refSpan) <= refSpan * 0.45);
@@ -1305,8 +1343,6 @@ function locateFinderBoundingBox(bin, width, height) {
     if (c.cy + half > maxY) maxY = Math.min(height - 1, Math.ceil(c.cy + half));
     spanSum += c.span;
   }
-
-  // Refine tight edges inside the localized region
   const rMinX = Math.max(0, minX - 2);
   const rMaxX = Math.min(width - 1, maxX + 2);
   const rMinY = Math.max(0, minY - 2);
@@ -1352,8 +1388,6 @@ function sampleAndDecodeBoundingBox(bin, width, height, minX, maxX, minY, maxY, 
       if (estVer + dv >= 1 && estVer + dv <= 15) candidateVersions.add(estVer + dv);
     }
   }
-
-  // Also estimate from top-left run length
   let topRun = 0;
   for (let x = minX; x <= maxX; x++) {
     if (bin[minY * width + x] === 1) topRun++;else if (topRun > 0) break;
@@ -1383,8 +1417,6 @@ function sampleAndDecodeBoundingBox(bin, width, height, minX, maxX, minY, maxY, 
         baseMatrix[r][c] = bin[rowOff + sampleX] === 1;
       }
     }
-
-    // Try 0°, 90°, 180°, and 270° orientations (only decoding orientations where 3 corners have finder patterns)
     let rot = baseMatrix;
     for (let angle = 0; angle < 4; angle++) {
       if (angle > 0) rot = rotateMatrix90(rot);
@@ -1398,11 +1430,12 @@ function sampleAndDecodeBoundingBox(bin, width, height, minX, maxX, minY, maxY, 
 }
 
 /**
- * Extracts and decodes a QR code from an `ImageData` buffer using a fast multi-pass pipeline:
- * - Pass 1: Global `jsQR` (with `inversionAttempts: 'attemptBoth'`) if available in browser
- * - Pass 2: Fast global mid-luminance threshold + tight bounding box + 4-orientation matrix decoder
- * - Pass 3: Inverted global polarity (white QR on dark background)
- * - Pass 4: Integral-image local adaptive thresholding + 1:1:3:1:1 finder pattern localization (for low light, shadows, & cluttered camera frames)
+ * Extracts and decodes a QR code from an `ImageData` buffer using a progressive multi-stage pipeline:
+ * - Stage 1: Global `jsQR` (with `inversionAttempts: 'attemptBoth'`) if available in browser
+ * - Stage 2: Fast global mid-luminance threshold + tight bounding box + 4-orientation matrix decoder
+ * - Stage 3: Inverted global polarity (white QR on dark background)
+ * - Stage 4: Integral-image local adaptive thresholding + 1:1:3:1:1 finder pattern localization
+ * - Stage 5: Percentile contrast stretch + 3x3 sharpening + multi-threshold adaptive recovery
  */
 function extractAndDecodeFromImageData(imageData) {
   const {
@@ -1412,7 +1445,7 @@ function extractAndDecodeFromImageData(imageData) {
   } = imageData;
   if (width < 21 || height < 21) return null;
 
-  // Pass 1: Global jsQR (when loaded)
+  // Stage 1: Global jsQR (when loaded)
   const globalWindow = typeof window !== 'undefined' ? window : {};
   if (typeof globalWindow.jsQR === 'function') {
     try {
@@ -1438,10 +1471,10 @@ function extractAndDecodeFromImageData(imageData) {
     if (lum < minLum) minLum = lum;
     if (lum > maxLum) maxLum = lum;
   }
-  if (maxLum - minLum < 12) return null;
+  if (maxLum - minLum < 8) return null;
   const midThreshold = minLum + maxLum >> 1;
 
-  // Pass 2: Fast Global Threshold (Normal Polarity)
+  // Stage 2: Fast Global Threshold (Normal Polarity)
   const binNormal = new Uint8Array(totalPixels);
   let minX = width,
     maxX = -1,
@@ -1462,8 +1495,6 @@ function extractAndDecodeFromImageData(imageData) {
   if (maxX > minX && maxY > minY) {
     const fastRes = sampleAndDecodeBoundingBox(binNormal, width, height, minX, maxX, minY, maxY);
     if (fastRes) return fastRes;
-
-    // If global bounding box had background clutter, locate the 3 finder patterns inside binNormal
     const finderBox = locateFinderBoundingBox(binNormal, width, height);
     if (finderBox) {
       const locRes = sampleAndDecodeBoundingBox(binNormal, width, height, finderBox.minX, finderBox.maxX, finderBox.minY, finderBox.maxY, finderBox.avgFinderSpan);
@@ -1471,7 +1502,7 @@ function extractAndDecodeFromImageData(imageData) {
     }
   }
 
-  // Pass 3: Inverted Polarity (Light QR on Dark Background)
+  // Stage 3: Inverted Polarity (Light QR on Dark Background)
   const binInverted = new Uint8Array(totalPixels);
   let invMinX = width,
     invMaxX = -1,
@@ -1494,34 +1525,92 @@ function extractAndDecodeFromImageData(imageData) {
     if (invRes) return invRes;
   }
 
-  // Pass 4: Integral-Image Local Adaptive Thresholding (Low-Light, Uneven Gradients, Shadows, & Blur)
-  const binAdaptive = binarizeAdaptive(gray, width, height, false);
+  // Stage 4: Integral-Image Local Adaptive Thresholding (Low-Light, Uneven Gradients, Shadows)
+  const binAdaptive = binarizeAdaptive(gray, width, height, false, 5);
   const adapFinderBox = locateFinderBoundingBox(binAdaptive, width, height);
   if (adapFinderBox) {
     const adapRes = sampleAndDecodeBoundingBox(binAdaptive, width, height, adapFinderBox.minX, adapFinderBox.maxX, adapFinderBox.minY, adapFinderBox.maxY, adapFinderBox.avgFinderSpan);
     if (adapRes) return adapRes;
-  } else {
-    let aMinX = width,
-      aMaxX = -1,
-      aMinY = height,
-      aMaxY = -1;
-    for (let y = 0; y < height; y++) {
-      const rowOff = y * width;
-      for (let x = 0; x < width; x++) {
-        if (binAdaptive[rowOff + x] === 1) {
-          if (x < aMinX) aMinX = x;
-          if (x > aMaxX) aMaxX = x;
-          if (y < aMinY) aMinY = y;
-          if (y > aMaxY) aMaxY = y;
-        }
+  }
+  let aMinX = width,
+    aMaxX = -1,
+    aMinY = height,
+    aMaxY = -1;
+  for (let y = 0; y < height; y++) {
+    const rowOff = y * width;
+    for (let x = 0; x < width; x++) {
+      if (binAdaptive[rowOff + x] === 1) {
+        if (x < aMinX) aMinX = x;
+        if (x > aMaxX) aMaxX = x;
+        if (y < aMinY) aMinY = y;
+        if (y > aMaxY) aMaxY = y;
       }
     }
-    if (aMaxX > aMinX && aMaxY > aMinY) {
-      const adapFallback = sampleAndDecodeBoundingBox(binAdaptive, width, height, aMinX, aMaxX, aMinY, aMaxY);
-      if (adapFallback) return adapFallback;
-    }
+  }
+  if (aMaxX > aMinX && aMaxY > aMinY) {
+    const adapFallback = sampleAndDecodeBoundingBox(binAdaptive, width, height, aMinX, aMaxX, aMinY, aMaxY);
+    if (adapFallback) return adapFallback;
+  }
+
+  // Stage 5: Percentile Contrast Stretch + 3x3 Sharpening + Alternative Adaptive Threshold
+  const sharpened = enhanceAndSharpenGray(gray, width, height);
+  const binSharpened = binarizeAdaptive(sharpened, width, height, false, 8);
+  const sharpFinder = locateFinderBoundingBox(binSharpened, width, height);
+  if (sharpFinder) {
+    const sharpRes = sampleAndDecodeBoundingBox(binSharpened, width, height, sharpFinder.minX, sharpFinder.maxX, sharpFinder.minY, sharpFinder.maxY, sharpFinder.avgFinderSpan);
+    if (sharpRes) return sharpRes;
   }
   return null;
+}
+
+/**
+ * Detects ALL distinct QR codes present inside an `ImageData` buffer (e.g. side-by-side or stacked QR codes
+ * in an uploaded screenshot or comparison sheet).
+ */
+function extractAllQRCodesFromImageData(imageData) {
+  const results = [];
+  const addUnique = val => {
+    if (val && !results.includes(val)) {
+      results.push(val);
+    }
+  };
+
+  // 1. Try whole image first
+  const primary = extractAndDecodeFromImageData(imageData);
+  addUnique(primary);
+  const {
+    data,
+    width,
+    height
+  } = imageData;
+  if (width >= 48 && height >= 48) {
+    // 2. Check left & right halves if image is wide enough to hold side-by-side QR codes
+    const midX = Math.floor(width / 2);
+    const cropRegion = (x0, y0, rw, rh) => {
+      const buf = new Uint8ClampedArray(rw * rh * 4);
+      for (let y = 0; y < rh; y++) {
+        const srcStart = ((y0 + y) * width + x0) * 4;
+        buf.set(data.subarray(srcStart, srcStart + rw * 4), y * rw * 4);
+      }
+      return {
+        data: buf,
+        width: rw,
+        height: rh
+      };
+    };
+    if (midX >= 25) {
+      addUnique(extractAndDecodeFromImageData(cropRegion(0, 0, midX, height)));
+      addUnique(extractAndDecodeFromImageData(cropRegion(midX, 0, width - midX, height)));
+    }
+
+    // 3. Check top & bottom halves if image is tall enough to hold stacked QR codes
+    const midY = Math.floor(height / 2);
+    if (midY >= 25) {
+      addUnique(extractAndDecodeFromImageData(cropRegion(0, 0, width, midY)));
+      addUnique(extractAndDecodeFromImageData(cropRegion(0, midY, width, height - midY)));
+    }
+  }
+  return results;
 }
 
 // Reusable singleton BarcodeDetector & reusable offscreen canvas to avoid per-frame GC allocations
@@ -1534,13 +1623,7 @@ function getSharedCanvas() {
   }
   return sharedDecodeCanvas;
 }
-
-/**
- * Decodes a QR code from an `HTMLImageElement`, `HTMLVideoElement`, or `HTMLCanvasElement`
- * using a fast ROI-first strategy for live video frames and multi-scale recovery for uploaded images.
- */
-async function decodeQRFromSource(source) {
-  // 1. Hardware-accelerated native BarcodeDetector (singleton instance)
+function getBarcodeDetector() {
   if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
     if (!barcodeDetectorChecked) {
       barcodeDetectorChecked = true;
@@ -1553,15 +1636,24 @@ async function decodeQRFromSource(source) {
         cachedBarcodeDetector = null;
       }
     }
-    if (cachedBarcodeDetector) {
-      try {
-        const results = await cachedBarcodeDetector.detect(source);
-        if (results && results.length > 0 && results[0].rawValue) {
-          return results[0].rawValue;
-        }
-      } catch {
-        // Fall through to canvas decoder
+  }
+  return cachedBarcodeDetector;
+}
+
+/**
+ * Decodes a QR code from an `HTMLImageElement`, `HTMLVideoElement`, or `HTMLCanvasElement`
+ * using a fast ROI-first strategy for live video frames and multi-scale recovery for uploaded images.
+ */
+async function decodeQRFromSource(source) {
+  const detector = getBarcodeDetector();
+  if (detector) {
+    try {
+      const results = await detector.detect(source);
+      if (results && results.length > 0 && results[0].rawValue) {
+        return results[0].rawValue;
       }
+    } catch {
+      // Fall through to canvas decoder
     }
   }
   const canvas = getSharedCanvas();
@@ -1630,6 +1722,52 @@ async function decodeQRFromSource(source) {
 }
 
 /**
+ * Decodes all QR codes present in an uploaded image element or canvas
+ */
+async function decodeAllQRCodesFromSource(source) {
+  const unique = [];
+  const add = val => {
+    if (val && !unique.includes(val)) unique.push(val);
+  };
+  const detector = getBarcodeDetector();
+  if (detector) {
+    try {
+      const results = await detector.detect(source);
+      if (results && results.length > 0) {
+        for (const r of results) add(r.rawValue);
+      }
+    } catch {
+      // ignore
+    }
+  }
+  const canvas = getSharedCanvas();
+  const w = typeof HTMLImageElement !== 'undefined' && source instanceof HTMLImageElement ? source.naturalWidth || source.width : source.width;
+  const h = typeof HTMLImageElement !== 'undefined' && source instanceof HTMLImageElement ? source.naturalHeight || source.height : source.height;
+  if (w > 0 && h > 0) {
+    const ctx = canvas.getContext('2d', {
+      willReadFrequently: true
+    });
+    if (ctx) {
+      const maxDim = Math.max(w, h);
+      const scale = maxDim < 180 ? 2.0 : Math.min(1, 900 / maxDim);
+      const sw = Math.max(21, Math.round(w * scale));
+      const sh = Math.max(21, Math.round(h * scale));
+      canvas.width = sw;
+      canvas.height = sh;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, sw, sh);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(source, 0, 0, sw, sh);
+      const imgData = ctx.getImageData(0, 0, sw, sh);
+      for (const found of extractAllQRCodesFromImageData(imgData)) {
+        add(found);
+      }
+    }
+  }
+  return unique;
+}
+
+/**
  * Decodes an uploaded image File (PNG, JPG/JPEG, WEBP) into a raw QR payload string.
  */
 function decodeQRFromFile(file) {
@@ -1665,465 +1803,41 @@ function decodeQRFromFile(file) {
 }
 
 /**
- * ZIP QR — Wi-Fi QR Decoder — Multi-User Authentication & Row-Level Security (RLS) Data Service
- *
- * Architecture & Security Enforcement:
- * 1. Dual-Mode Operation:
- *    - Production Cloud Mode: Connects to Supabase Auth (`/auth/v1/*`) & PostgREST (`/rest/v1/*`)
- *      when `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are configured.
- *    - Verified Local RLS Engine Mode: Provides an RFC-compliant JWT + Row-Level Security (RLS)
- *      database engine (`auth.uid() = user_id`) for local development, offline operation, and
- *      automated multi-user security & concurrency testing.
- * 2. Strict User Isolation (`auth.uid() === row.user_id`):
- *    - Every SELECT, INSERT, UPDATE, and DELETE operation extracts the verified `user_id` (`sub`)
- *      solely from the cryptographically verified session token—NEVER trusting a `user_id`
- *      supplied by the caller or frontend payload.
- *    - User A can NEVER read, modify, or delete User B's history or settings.
- * 3. Zero-Plaintext-Password Server Policy:
- *    - Synchronized scan history records (`SyncedScanMetadataRecord`) strip `password` and
- *      `rawPayload` before storage. Only non-sensitive metadata (`scan_id`, `scanned_at`,
- *      optional `ssid` when `syncSsidOptIn` is enabled, `security_type`, `hidden_network`,
- *      and `qr_category`) is stored.
- * 4. Brute-Force Login Rate Limiting & Input Validation:
- *    - Tracks failed login attempts per email and enforces a temporary lockout after 5 consecutive failures.
- *    - Validates email format, password strength (min 8 chars), and field length bounds.
+ * Decodes one or more QR codes from an uploaded image File (supporting multi-QR selection)
  */
-
-const SESSION_STORAGE_KEY = 'zip_qr_auth_session_v1';
-const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
-
-function simpleKdfDigest(password, salt) {
-  // Deterministic PBKDF-style multi-round mixing for local RLS engine verification
-  let h1 = 0xdeadbeef ^ salt.length;
-  let h2 = 0x41c6ce57 ^ password.length;
-  const combined = `${salt}:${password}:${salt}`;
-  for (let round = 0; round < 2048; round++) {
-    for (let i = 0; i < combined.length; i++) {
-      const ch = combined.charCodeAt(i) ^ round & 0xff;
-      h1 = Math.imul(h1 ^ ch, 2654435761);
-      h2 = Math.imul(h2 ^ ch, 1597334677);
+function decodeAllQRCodesFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif', 'image/bmp'];
+    const ext = file.name.toLowerCase().split('.').pop() || '';
+    const allowedExts = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'];
+    if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
+      reject(new Error('Unsupported file format. Please upload a PNG, JPG/JPEG, or WEBP image.'));
+      return;
     }
-  }
-  h1 = Math.imul(h1 ^ h1 >>> 16, 2246822507) ^ Math.imul(h2 ^ h2 >>> 13, 3266489909);
-  h2 = Math.imul(h2 ^ h2 >>> 16, 2246822507) ^ Math.imul(h1 ^ h1 >>> 13, 3266489909);
-  return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
-}
-function generateUuidV4() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : r & 0x3 | 0x8;
-    return v.toString(16);
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Failed to read the selected image file.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('The selected file is not a valid image.'));
+      img.onload = async () => {
+        try {
+          const payloads = await decodeAllQRCodesFromSource(img);
+          if (payloads.length > 0) {
+            resolve(payloads);
+          } else {
+            reject(new Error('No valid QR code was detected in this image. Ensure the QR code is clear and well-lit.'));
+          }
+        } catch (err) {
+          reject(err instanceof Error ? err : new Error('QR decoding error.'));
+        }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
   });
 }
-function validateEmail(email) {
-  const clean = (email || '').trim().toLowerCase();
-  if (!clean || clean.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
-    throw new Error('Invalid email address format.');
-  }
-  return clean;
-}
-function validatePasswordStrength(password) {
-  if (!password || typeof password !== 'string' || password.length < 8) {
-    throw new Error('Password must be at least 8 characters long.');
-  }
-  if (password.length > 256) {
-    throw new Error('Password exceeds maximum length.');
-  }
-}
-class MultiUserAuthAndRlsEngine {
-  usersByEmail = new Map();
-  usersById = new Map();
-  activeTokens = new Map();
-  refreshTokens = new Map();
-  failedLogins = new Map();
 
-  // RLS-protected tables keyed by row ID (never partitioned by trust; every query evaluates RLS policy)
-  userSettingsTable = [];
-  scanHistoryMetadataTable = [];
-  currentSession = null;
-  constructor() {
-    this.restoreSessionFromStorage();
-  }
-  restoreSessionFromStorage() {
-    try {
-      if (typeof localStorage === 'undefined') return;
-      const raw = localStorage.getItem(SESSION_STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.expiresAt > Date.now() && parsed.accessToken && parsed.user?.id) {
-        this.currentSession = parsed;
-      } else {
-        localStorage.removeItem(SESSION_STORAGE_KEY);
-      }
-    } catch {
-      // ignore storage errors
-    }
-  }
-  persistSessionToStorage(session) {
-    this.currentSession = session;
-    try {
-      if (typeof localStorage === 'undefined') return;
-      if (session) {
-        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
-      } else {
-        localStorage.removeItem(SESSION_STORAGE_KEY);
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  /**
-   * Verifies an access token and returns the authenticated user's `auth.uid()`.
-   * Throws an Unauthorized error if the token is missing, invalid, forged, or expired.
-   */
-  verifyAccessToken(accessToken) {
-    const token = accessToken !== undefined ? accessToken : this.currentSession?.accessToken;
-    if (!token || typeof token !== 'string') {
-      throw new Error('Unauthorized: Missing authentication token.');
-    }
-    const record = this.activeTokens.get(token);
-    if (!record) {
-      throw new Error('Unauthorized: Invalid or revoked authentication token.');
-    }
-    if (Date.now() > record.expiresAt) {
-      this.activeTokens.delete(token);
-      throw new Error('Unauthorized: Session token has expired.');
-    }
-    if (!this.usersById.has(record.userId)) {
-      this.activeTokens.delete(token);
-      throw new Error('Unauthorized: Account no longer exists.');
-    }
-    return record.userId;
-  }
-  issueSessionForUser(account) {
-    const accessToken = `zip_jwt_${generateUuidV4()}_${Date.now().toString(36)}`;
-    const refreshToken = `zip_ref_${generateUuidV4()}`;
-    const expiresAt = Date.now() + 60 * 60 * 1000; // 1 hour token TTL
-
-    this.activeTokens.set(accessToken, {
-      userId: account.id,
-      expiresAt
-    });
-    this.refreshTokens.set(refreshToken, {
-      userId: account.id,
-      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000
-    });
-    const session = {
-      accessToken,
-      refreshToken,
-      expiresAt,
-      user: {
-        id: account.id,
-        email: account.email,
-        createdAt: account.createdAt
-      }
-    };
-    this.persistSessionToStorage(session);
-    return session;
-  }
-
-  /**
-   * Registers a new user account and initializes isolated RLS settings row
-   */
-  async register(email, password) {
-    const cleanEmail = validateEmail(email);
-    validatePasswordStrength(password);
-    if (this.usersByEmail.has(cleanEmail)) {
-      throw new Error('An account with this email address is already registered.');
-    }
-    const userId = generateUuidV4();
-    const salt = generateUuidV4();
-    const digest = simpleKdfDigest(password, salt);
-    const createdAt = new Date().toISOString();
-    const account = {
-      id: userId,
-      email: cleanEmail,
-      passwordSalt: salt,
-      passwordDigest: digest,
-      createdAt
-    };
-    this.usersByEmail.set(cleanEmail, account);
-    this.usersById.set(userId, account);
-    const session = this.issueSessionForUser(account);
-
-    // Initialize user's isolated settings row under RLS
-    await this.upsertUserSettings({
-      language: 'ckb',
-      accentTheme: 'electric-blue',
-      historyEnabled: true,
-      syncSsidOptIn: true,
-      autoMaskPassword: false
-    }, session.accessToken);
-    return session;
-  }
-
-  /**
-   * Authenticates an existing user with brute-force rate limiting protection
-   */
-  async login(email, password) {
-    const cleanEmail = validateEmail(email);
-    if (!password) {
-      throw new Error('Invalid email or password.');
-    }
-    const rateState = this.failedLogins.get(cleanEmail);
-    if (rateState && rateState.lockedUntil > Date.now()) {
-      const remainingSec = Math.ceil((rateState.lockedUntil - Date.now()) / 1000);
-      throw new Error(`Too many failed login attempts. Account temporarily locked for ${remainingSec}s.`);
-    }
-    const account = this.usersByEmail.get(cleanEmail);
-    if (!account) {
-      this.recordFailedAttempt(cleanEmail);
-      throw new Error('Invalid email or password.');
-    }
-    const expectedDigest = simpleKdfDigest(password, account.passwordSalt);
-    if (expectedDigest !== account.passwordDigest) {
-      this.recordFailedAttempt(cleanEmail);
-      throw new Error('Invalid email or password.');
-    }
-
-    // Clear failed attempts on successful login
-    this.failedLogins.delete(cleanEmail);
-    return this.issueSessionForUser(account);
-  }
-  recordFailedAttempt(email) {
-    const prev = this.failedLogins.get(email) || {
-      count: 0,
-      lockedUntil: 0
-    };
-    const nextCount = prev.count + 1;
-    const lockedUntil = nextCount >= MAX_FAILED_ATTEMPTS ? Date.now() + LOCKOUT_WINDOW_MS : 0;
-    this.failedLogins.set(email, {
-      count: nextCount,
-      lockedUntil
-    });
-  }
-
-  /**
-   * Refreshes an active session using a valid refresh token
-   */
-  async refreshSession(refreshToken) {
-    const token = refreshToken || this.currentSession?.refreshToken;
-    if (!token) throw new Error('Unauthorized: Missing refresh token.');
-    const rec = this.refreshTokens.get(token);
-    if (!rec || Date.now() > rec.expiresAt) {
-      this.refreshTokens.delete(token);
-      throw new Error('Unauthorized: Refresh token expired or invalid.');
-    }
-    const account = this.usersById.get(rec.userId);
-    if (!account) {
-      throw new Error('Unauthorized: Account not found.');
-    }
-    this.refreshTokens.delete(token);
-    return this.issueSessionForUser(account);
-  }
-
-  /**
-   * Requests a password reset for a registered email address
-   */
-  async requestPasswordReset(email) {
-    const cleanEmail = validateEmail(email);
-    // Return uniform response to prevent user enumeration
-    return {
-      status: 'reset_dispatched',
-      email: cleanEmail
-    };
-  }
-
-  /**
-   * Logs out the current session, revoking tokens and wiping private in-memory session state
-   */
-  async logout(accessToken) {
-    const token = accessToken !== undefined ? accessToken : this.currentSession?.accessToken;
-    if (token) {
-      this.activeTokens.delete(token);
-    }
-    if (this.currentSession?.refreshToken) {
-      this.refreshTokens.delete(this.currentSession.refreshToken);
-    }
-    if (!accessToken || accessToken === this.currentSession?.accessToken) {
-      this.persistSessionToStorage(null);
-    }
-  }
-  getCurrentSession() {
-    if (this.currentSession && Date.now() > this.currentSession.expiresAt) {
-      this.persistSessionToStorage(null);
-      return null;
-    }
-    return this.currentSession;
-  }
-
-  /**
-   * Permanently deletes the authenticated user's account and cascades deletion across
-   * all user_settings and scan_history_metadata rows owned by `auth.uid()`.
-   */
-  async deleteOwnAccount(accessToken) {
-    const authUid = this.verifyAccessToken(accessToken);
-    const account = this.usersById.get(authUid);
-    if (!account) {
-      throw new Error('Unauthorized: Account not found.');
-    }
-
-    // Cascade delete all RLS rows owned by authUid
-    this.scanHistoryMetadataTable = this.scanHistoryMetadataTable.filter(row => row.user_id !== authUid);
-    this.userSettingsTable = this.userSettingsTable.filter(row => row.user_id !== authUid);
-
-    // Revoke all tokens belonging to authUid
-    for (const [tok, meta] of this.activeTokens.entries()) {
-      if (meta.userId === authUid) this.activeTokens.delete(tok);
-    }
-    for (const [rtok, meta] of this.refreshTokens.entries()) {
-      if (meta.userId === authUid) this.refreshTokens.delete(rtok);
-    }
-    this.usersByEmail.delete(account.email);
-    this.usersById.delete(authUid);
-    if (this.currentSession?.user.id === authUid) {
-      this.persistSessionToStorage(null);
-    }
-  }
-
-  // ===========================================================================
-  // RLS-PROTECTED TABLE OPERATIONS (`auth.uid() === row.user_id`)
-  // ===========================================================================
-
-  async getUserSettings(accessToken) {
-    const authUid = this.verifyAccessToken(accessToken);
-    // RLS SELECT policy: `USING (auth.uid() = user_id)`
-    const row = this.userSettingsTable.find(r => r.user_id === authUid);
-    return row ? {
-      ...row
-    } : null;
-  }
-  async upsertUserSettings(input, accessToken) {
-    const authUid = this.verifyAccessToken(accessToken);
-
-    // RLS WITH CHECK policy: Reject forged user_id if caller attempts to specify another user's ID
-    if (input.user_id !== undefined && input.user_id !== authUid) {
-      throw new Error('Forbidden (RLS Policy Violation): Cannot write settings for another user_id.');
-    }
-    const existingIdx = this.userSettingsTable.findIndex(r => r.user_id === authUid);
-    const prev = existingIdx >= 0 ? this.userSettingsTable[existingIdx] : {
-      user_id: authUid,
-      language: 'ckb',
-      accent_theme: 'electric-blue',
-      history_enabled: true,
-      sync_ssid_opt_in: true,
-      auto_mask_password: false,
-      updated_at: new Date().toISOString()
-    };
-    const updated = {
-      user_id: authUid,
-      language: input.language ?? prev.language,
-      accent_theme: input.accentTheme ?? prev.accent_theme,
-      history_enabled: input.historyEnabled ?? prev.history_enabled,
-      sync_ssid_opt_in: input.syncSsidOptIn ?? prev.sync_ssid_opt_in,
-      auto_mask_password: input.autoMaskPassword ?? prev.auto_mask_password,
-      updated_at: new Date().toISOString()
-    };
-    if (existingIdx >= 0) {
-      this.userSettingsTable[existingIdx] = updated;
-    } else {
-      this.userSettingsTable.push(updated);
-    }
-    return {
-      ...updated
-    };
-  }
-
-  /**
-   * Inserts a sanitized, non-sensitive scan metadata record into `scan_history_metadata`.
-   *
-   * MANDATORY PRIVACY GUARANTEE:
-   * - Never stores `result.password` or `result.rawPayload`.
-   * - Enforces RLS policy `WITH CHECK (auth.uid() = user_id)`.
-   */
-  async insertSyncedScanRecord(result, options, accessToken) {
-    const authUid = this.verifyAccessToken(accessToken);
-
-    // RLS WITH CHECK enforcement: reject any attempt to forge another user's user_id
-    if (options?.forgedUserId && options.forgedUserId !== authUid) {
-      throw new Error('Forbidden (RLS Policy Violation): auth.uid() does not match supplied user_id.');
-    }
-    const userSettings = await this.getUserSettings(accessToken);
-    const includeSsid = options?.includeSsid !== undefined ? options.includeSsid : userSettings ? userSettings.sync_ssid_opt_in : true;
-    const sanitizedRecord = {
-      id: generateUuidV4(),
-      user_id: authUid,
-      scan_id: String(result.id || generateUuidV4()).slice(0, 64),
-      scanned_at: result.timestamp || new Date().toISOString(),
-      ssid: includeSsid ? String(result.ssid || '').slice(0, 128) : null,
-      security_type: String(result.securityType || 'Unknown').slice(0, 32),
-      hidden_network: Boolean(result.hiddenNetwork),
-      qr_category: result.category || 'WIFI',
-      created_at: new Date().toISOString()
-    };
-
-    // Deduplicate per (user_id, scan_id)
-    this.scanHistoryMetadataTable = this.scanHistoryMetadataTable.filter(r => !(r.user_id === authUid && r.scan_id === sanitizedRecord.scan_id));
-    this.scanHistoryMetadataTable.unshift(sanitizedRecord);
-    return {
-      ...sanitizedRecord
-    };
-  }
-
-  /**
-   * Lists the authenticated user's isolated scan history metadata with pagination.
-   * Enforces RLS policy `USING (auth.uid() = user_id)`.
-   */
-  async listSyncedScanHistory(page = 1, pageSize = 20, accessToken, attemptedFilterUserId) {
-    const authUid = this.verifyAccessToken(accessToken);
-
-    // Even if a malicious caller passes attemptedFilterUserId = User B's ID,
-    // PostgreSQL RLS intersects the query with `WHERE user_id = auth.uid()`,
-    // returning 0 rows if attemptedFilterUserId !== authUid.
-    const rlsFiltered = this.scanHistoryMetadataTable.filter(row => {
-      const passesRls = row.user_id === authUid;
-      const passesCallerFilter = attemptedFilterUserId ? row.user_id === attemptedFilterUserId : true;
-      return passesRls && passesCallerFilter;
-    });
-    const safePage = Math.max(1, page);
-    const safePageSize = Math.min(100, Math.max(1, pageSize));
-    const start = (safePage - 1) * safePageSize;
-    const paged = rlsFiltered.slice(start, start + safePageSize).map(r => ({
-      ...r
-    }));
-    return {
-      items: paged,
-      page: safePage,
-      pageSize: safePageSize,
-      totalCount: rlsFiltered.length,
-      hasMore: start + safePageSize < rlsFiltered.length
-    };
-  }
-
-  /**
-   * Deletes a single scan metadata record by record ID or scan_id.
-   * Enforces RLS policy `USING (auth.uid() = user_id)`.
-   */
-  async deleteSyncedScanRecord(recordIdOrScanId, accessToken) {
-    const authUid = this.verifyAccessToken(accessToken);
-    const beforeLen = this.scanHistoryMetadataTable.length;
-
-    // RLS DELETE policy: only rows where `row.user_id === authUid` can be deleted
-    this.scanHistoryMetadataTable = this.scanHistoryMetadataTable.filter(row => !(row.user_id === authUid && (row.id === recordIdOrScanId || row.scan_id === recordIdOrScanId)));
-    return this.scanHistoryMetadataTable.length < beforeLen;
-  }
-
-  /**
-   * Clears all synchronized scan metadata records belonging to the authenticated user (`auth.uid()`).
-   */
-  async clearOwnSyncedHistory(accessToken) {
-    const authUid = this.verifyAccessToken(accessToken);
-    const beforeLen = this.scanHistoryMetadataTable.length;
-    this.scanHistoryMetadataTable = this.scanHistoryMetadataTable.filter(row => row.user_id !== authUid);
-    return beforeLen - this.scanHistoryMetadataTable.length;
-  }
-}
-const authService = new MultiUserAuthAndRlsEngine();
-
-
-    // =========================================================================
+// =========================================================================
     // BILINGUAL LOCALIZATION DICTIONARY (Kurdish Sorani ckb RTL & English en LTR)
     // =========================================================================
     const TRANSLATIONS = {
@@ -2139,8 +1853,8 @@ const authService = new MultiUserAuthAndRlsEngine();
     "navSettings": "ڕێکخستنەکان",
     "langKurdish": "کوردی",
     "langEnglish": "English",
-    "heroBadge": "١٠٠٪ شیکردنەوەی ناوخۆیی لەناو وێبگەڕ • بێ ناردن بۆ سێرڤەر",
-    "heroDescription": "هەر کۆدێکی QRـی وای-فای بە کامێرا سکان بکە یان وێنەی QR باربکە (PNG، JPG، JPEG، WEBP) بۆ دەرهێنان و پیشاندانی دەستبەجێی تێپەڕەوشەی وای-فای، ناوی تۆڕ (SSID)، جۆری پاراستن (WPA، WPA2، WPA3، WEP، کراوە، DPP)، و دۆخی تۆڕی شاراوە.",
+    "heroBadge": "١٠٠٪ شیکردنەوەی ناوخۆیی لەناو وێبگەڕ • بێ هەژمار و بێ سێرڤەر",
+    "heroDescription": "هەر کۆدێکی QRـی وای-فای بە کامێرا سکان بکە یان وێنەی QR باربکە (PNG، JPG، JPEG، WEBP) بۆ دەرهێنان و پیشاندانی دەستبەجێی تێپەڕەوشەی وای-فای، ناوی تۆڕ (SSID)، جۆری پاراستن (WPA، WPA2، WPA3، WEP، کراوە، DPP)، و پاشەکەوتکردنی تەواوی مێژوو لەسەر ئامێرەکەت.",
     "btnScanQrCode": "سکانکردنی کۆدی QR",
     "btnUploadQrImage": "بارکردنی وێنەی QR",
     "card1Step": "١. کامێرای ڕاستەوخۆ",
@@ -2157,9 +1871,12 @@ const authService = new MultiUserAuthAndRlsEngine();
     "card3Placeholder": "دەقی WIFI:... یان DPP:... لێرە بلکێنە",
     "card3Btn": "شیکردنەوەی ناوەڕۆکی QR",
     "recentHeading": "کۆدە سکانکراوەکانی دوایی",
-    "recentSubheading": "کۆدە پاشەکەوتکراوەکان بە شێوەی ناوخۆیی لەسەر ئەم ئامێرە",
+    "recentSubheading": "پاشەکەوتکراوە لە بنکەدراوەی ناوخۆیی وێبگەڕ (IndexedDB) لەگەڵ تێپەڕەوشەکان",
     "btnManageHistory": "بەڕێوەبردنی مێژوو",
     "emptyRecentText": "هێشتا هیچ کۆدێکی QR سکان نەکراوە. لە سەرەوە سکانکردنی کۆدی QR، بارکردنی وێنەی QR، یان لکاندنی ناوەڕۆکی QR بەکاربهێنە.",
+    "multiQrTitle": "چەند کۆدێکی QR لە وێنەکەدا دۆزرایەوە",
+    "multiQrSubtitle": "تکایە ئەو کۆدەی QR هەڵبژێرە کە دەتەوێت زانیاری و تێپەڕەوشەکەی ببینیت:",
+    "btnSelectThisQr": "بینینی ئەم کۆدە",
     "scannerTitle": "سکانەری ڕاستەوخۆی QRـی وای-فای",
     "scannerSubtitle": "کۆدی QRـی وای-فای بخەرە ناو چوارچێوەکە یان وێنەیەک لە گەلەری ئامێرەکەت هەڵبژێرە.",
     "btnCancel": "پاشگەزبوونەوە",
@@ -2173,9 +1890,11 @@ const authService = new MultiUserAuthAndRlsEngine();
     "btnFallbackUpload": "بارکردنی وێنەی QR لەبری کامێرا",
     "defaultCameraLabel": "کامێرای بنەڕەتی ئامێر",
     "cameraItemPrefix": "کامێرا",
+    "btnSwitchCamera": "گۆڕینی کامێرا",
     "flashlightOn": "فلاش: داگیرساوە",
     "flashlightOff": "فلاش: کوژاوەتەوە",
     "flashlightNA": "فلاش بەردەست نییە",
+    "zoomLabel": "نزیککردنەوە (Zoom)",
     "btnUploadFromGallery": "بارکردن لە گەلەرییەوە",
     "resultsEmptyTitle": "هێشتا هیچ کۆدێکی QR سکان نەکراوە",
     "resultsEmptyDesc": "لە پەڕەی سەرەکی کۆدێکی QRـی وای-فای بە کامێرا سکان بکە، وێنەیەک باربکە، یان دەقی کۆدەکە بلکێنە.",
@@ -2188,7 +1907,7 @@ const authService = new MultiUserAuthAndRlsEngine();
     "btnShowPassword": "پیشاندانی تێپەڕەوشە",
     "btnHidePassword": "شاردنەوەی تێپەڕەوشە",
     "btnCopyPassword": "لەبەرگرتنەوەی تێپەڕەوشە",
-    "passwordExactNote": "ڕاستەوخۆ و بە شێوەی ناوخۆیی لە ناوەڕۆکی کۆدی QR دەرهێنراوە لەگەڵ چارەسەرکردنی تەواوی هێما تایبەتەکان.",
+    "passwordExactNote": "ڕاستەوخۆ و بە شێوەی ناوخۆیی لە ناوەڕۆکی کۆدی QR دەرهێنراوە و لە بنکەدراوەی ناوخۆیی وێبگەڕەکەت پاشەکەوت کراوە.",
     "noPasswordEncodedMsg": "هیچ تێپەڕەوشەیەک لەم کۆدی QRـەدا تۆمار نەکراوە.",
     "openNetworkNoPasswordMsg": "تۆڕی کراوە — پێویستی بە تێپەڕەوشە نییە.",
     "dppNoPasswordMsg": "هیچ تێپەڕەوشەیەک لەم کۆدی QRـەدا تۆمار نەکراوە. پڕۆتۆکۆلی DPP کلیلی گشتی نهێنیبەندی بەکاردەهێنێت لەبری تێپەڕەوشەی ئاسایی.",
@@ -2211,19 +1930,21 @@ const authService = new MultiUserAuthAndRlsEngine();
     "hiddenNo": "نەخێر",
     "hiddenNA": "بەردەست نییە",
     "historyTitle": "مێژووی سکانکردن",
-    "historySubtitle": "بینینی کۆدە سکانکراوەکانی پێشوو. بە تەواوی لەناو ئامێرەکەی خۆت پاشەکەوت دەکرێت.",
+    "historySubtitle": "تۆمارە پاشەکەوتکراوەکانی وای-فای لەگەڵ تێپەڕەوشەکانیان لە بنکەدراوەی ناوخۆیی وێبگەڕ (IndexedDB) هەڵگیراون و دوای داخستنی وێبگەڕ دەمێننەوە.",
+    "historyStorageBadge": "بنکەدراوەی هەمیشەیی IndexedDB • تەنها لەسەر ئەم ئامێرە",
     "labelSaveHistory": "پاشەکەوتکردنی مێژووی سکان",
     "btnClearAllHistory": "سڕینەوەی هەموو مێژوو",
     "modalClearTitle": "دڵنیابوونەوە لە سڕینەوەی تەواوی مێژوو",
-    "modalClearDesc": "ئایا دڵنیایت کە دەتەوێت هەموو تۆمارەکانی مێژووی سکان بە هەمیشەیی لە وێبگەڕەکەت بسڕیتەوە؟",
+    "modalClearDesc": "ئایا دڵنیایت کە دەتەوێت هەموو تۆمارەکانی مێژووی سکان و تێپەڕەوشە پاشەکەوتکراوەکان بە هەمیشەیی لە بنکەدراوەی وێبگەڕەکەت بسڕیتەوە؟",
     "btnConfirmClear": "بەڵێ، هەمووی بسڕەوە",
     "historySearchPlaceholder": "گەڕان لە مێژوودا بەپێی ناوی تۆڕ (SSID)، جۆری پاراستن، یان فۆرمات...",
     "historyEmptyText": "مێژووی ناوخۆیی سکانکردن لە ئێستادا بەتاڵە.",
     "historyNoMatchText": "هیچ تۆمارێکی مێژوو لەگەڵ گەڕانەکەت ناگونجێت.",
-    "btnOpenResult": "کردنەوەی ئەنجام",
+    "btnOpenResult": "وردەکاری تەواو",
     "btnDeleteEntry": "سڕینەوە",
     "badgeHiddenSsid": "تۆڕی شاراوە",
-    "historyPasswordExtractedPrefix": "تێپەڕەوشە دەرهێنراوە",
+    "badgeSavedPassword": "تێپەڕەوشە پاشەکەوتکراوە",
+    "historyPasswordExtractedPrefix": "تێپەڕەوشە پاشەکەوتکراوە",
     "settingsTitle": "ڕێکخستنەکان و تایبەتمەندی",
     "settingsSubtitle": "گۆڕینی زمان، ڕووکاری ڕەنگەکان، شاردنەوەی تێپەڕەوشە، و کۆنترۆڵکردنی تایبەتمەندی داتای ناوخۆیی.",
     "settingsLanguageHeading": "زمان / Language",
@@ -2236,17 +1957,19 @@ const authService = new MultiUserAuthAndRlsEngine();
     "theme3Title": "قەڵغانی زومڕەدی",
     "theme3Desc": "ڕووکاری تاریکی جیاوازی بەرز",
     "maskPasswordTitle": "شاردنەوەی تێپەڕەوشە بە شێوەی بنەڕەتی لە پەڕەی ئەنجامەکان",
-    "maskPasswordDesc": "سەرەتا تێپەڕەوشەکە بە شاراوەیی (••••••) پیشان بدە تا ئەو کاتەی کرتە لە پیشاندانی تێپەڕەوشە دەکەیت",
-    "historyPrefsHeading": "ڕێکخستنەکانی مێژوو",
-    "enableHistoryTitle": "چالاککردنی مێژووی سکانی ناوخۆیی",
-    "enableHistoryDesc": "پاشەکەوتکردنی خودکارانەی کۆدە شیکراوەکانی QR لە بیرگەی ناوخۆیی وێبگەڕەکەت",
-    "privacyHeading": "زانیاری تایبەتمەندی و کۆنترۆڵی داتا",
-    "privacyCard1Title": "١٠٠٪ کارکردن لەسەر ئامێری بەکارهێنەر",
-    "privacyCard1Desc": "پەخشی کامێرا و وێنە بارکراوەکانی QR بە تەواوی لەناو وێبگەڕەکەت شیدەکرێنەوە. تێپەڕەوشەکان هەرگیز بۆ هیچ سێرڤەر یان خزمەتگوزارییەکی دەرەکی نانێردرێن.",
-    "privacyCard2Title": "پاراستنی داتای دەرەکی و داگرتنی سەلامەت",
-    "privacyCard2Desc": "بەستەرە سکانکراوەکان بە شێوەی خودکارانە ناکرێنەوە، و فایلە داگیراوەکان ناوی بێلایەنی کاتدار بەکاردەهێنن بۆ ئەوەی زانیارییە نهێنییەکان لە ناوی فایلدا دەرنەکەون.",
-    "btnClearAllStoredData": "سڕینەوەی هەموو داتا پاشەکەوتکراوەکان (مێژوو و ڕێکخستنەکان)",
-    "confirmWipePrompt": "دڵنیایت لە سڕینەوەی هەموو مێژوو و گەڕاندنەوەی ڕێکخستنەکان بۆ دۆخی بنەڕەتی؟",
+    "maskPasswordDesc": "سەرەتا تێپەڕەوشەکە بە شاراوەیی (••••••••) پیشان بدە تا ئەو کاتەی کرتە لە پیشاندانی تێپەڕەوشە دەکەیت (لە پەڕەی مێژوودا هەمیشە بە شاراوەیی پیشان دەدرێت).",
+    "historyPrefsHeading": "ڕێکخستنەکانی مێژووی IndexedDB",
+    "enableHistoryTitle": "چالاککردنی مێژووی هەمیشەیی ناوخۆیی (لەگەڵ تێپەڕەوشەکان)",
+    "enableHistoryDesc": "پاشەکەوتکردنی خودکارانەی تۆڕە سکانکراوەکان و تێپەڕەوشەی ڕاستەقینەی وای-فای لە بنکەدراوەی IndexedDBـی وێبگەڕەکەت تا دوای داخستنی وێبگەڕ یان کوژاندنەوەی ئامێرەکەش بمێننەوە.",
+    "privacyHeading": "زانیاری تایبەتمەندی و ڕاستگۆیی تەکنیکی",
+    "privacyCard1Title": "١٠٠٪ کارکردن لەسەر ئامێری بەکارهێنەر (بێ سێرڤەر)",
+    "privacyCard1Desc": "پەخشی کامێرا، وێنە بارکراوەکانی QR، و تێپەڕەوشەکانی وای-فای بە تەواوی لەناو وێبگەڕەکەت شیدەکرێنەوە. هیچ زانیارییەک هەرگیز بۆ هیچ سێرڤەر یان لایەنێکی دەرەکی نانێردرێت.",
+    "privacyCard2Title": "تایبەتمەندی و سنووردارێتی بیرگەی ناوخۆیی (IndexedDB)",
+    "privacyCard2Desc": "مێژوو و تێپەڕەوشەکان لەسەر پڕۆفایلی وێبگەڕی ئەم ئامێرە هەڵدەگیرێن بەبێ پێویستی بە چوونەژوورەوە. تێپەڕەوشەکان لە ڕووکاردا بە هێمای (••••••••) دەشاردرێنەوە، بەڵام هەر کەسێک دەستی بگاتە هەمان پڕۆفایلی وێبگەڕ و داتای ئامێرەکەت دەتوانێت بیانبینێت.",
+    "privacyCard3Title": "پاراستنی داتای دەرەکی و نوێکردنەوەی سەلامەت",
+    "privacyCard3Desc": "نوێکردنەوەی بەرنامەکە (PWA Service Worker) تەنها فایلە کاتییەکانی ڕووکار نوێ دەکاتەوە و هەرگیز بنکەدراوەی مێژووی وای-فایەکانت ناسڕێتەوە.",
+    "btnClearAllStoredData": "سڕینەوەی هەموو داتا پاشەکەوتکراوەکان (مێژووی IndexedDB و ڕێکخستنەکان)",
+    "confirmWipePrompt": "دڵنیایت لە سڕینەوەی هەموو مێژووی IndexedDB و گەڕاندنەوەی ڕێکخستنەکان بۆ دۆخی بنەڕەتی؟",
     "btnConfirmWipe": "تەواو، هەمووی بسڕەوە",
     "aboutHeading": "دەربارەی ZIP QR — Wi-Fi QR Decoder",
     "aboutDescription": "ZIP QR — Wi-Fi QR Decoder (وەشانی PWA) — SCAN. REVEAL. CONNECT. دیزاین کراوە بۆ ئایفۆن، ئایپاد، مۆبایل و تابلێتەکانی ئەندرۆید، ویندۆز، ماکبووک، و کۆمپیوتەرەکانی لینوکس. پشتگیری لە تۆڕەکانی WPA، WPA2، WPA3-SAE، WPA2-EAP، WEP، تۆڕە کراوەکان (nopass)، تۆڕە شاراوەکان، هێما تایبەتەکان (\\; \\, \\: \\\\ \\\")، و کۆدەکانی Wi-Fi Easy Connect (DPP:) دەکات.",
@@ -2261,8 +1984,8 @@ const authService = new MultiUserAuthAndRlsEngine();
     "creatorContactBtn": "پەیوەندیکردن بە ئیمەیڵ",
     "creatorEmailLabel": "ئیمەیڵی پەیوەندی",
     "footerLeft": "ZIP QR — Wi-Fi QR Decoder • SCAN. REVEAL. CONNECT.",
-    "footerRight": "١٠٠٪ شیکردنەوەی ناوخۆیی کۆدی QR لەناو وێبگەڕ • بێ ناردن بۆ هەور (Cloud)",
-    "toastPasswordExtracted": "تێپەڕەوشە دەرهێنرا بۆ تۆڕی",
+    "footerRight": "١٠٠٪ شیکردنەوەی ناوخۆیی کۆدی QR لەناو وێبگەڕ • بێ هەژمار و بێ ناردن بۆ سێرڤەر",
+    "toastPasswordExtracted": "تێپەڕەوشە دەرهێنرا و لە مێژوو پاشەکەوت کرا بۆ",
     "toastDecodedPayload": "کۆدی QR بە سەرکەوتوویی شیکرایەوە",
     "toastPasswordCopied": "تێپەڕەوشەی وای-فای لەبەرگیرایەوە!",
     "toastSsidCopied": "ناوی تۆڕ (SSID) لەبەرگیرایەوە!",
@@ -2270,44 +1993,16 @@ const authService = new MultiUserAuthAndRlsEngine();
     "toastDownloadedTxt": "ڕاپۆرتی ئەنجامەکان داگیرا (.txt)",
     "toastDownloadedJson": "فایلی داتای ئەنجامەکان داگیرا (.json)",
     "toastEnterPayload": "تکایە دەقی ناوەڕۆکی کۆدی QR بنووسە یان بلکێنە بۆ شیکردنەوە.",
-    "toastHistoryEnabled": "پاشەکەوتکردنی مێژووی سکان چالاک کرا.",
+    "toastHistoryEnabled": "پاشەکەوتکردنی مێژووی سکان لە IndexedDB چالاک کرا.",
     "toastHistoryPaused": "پاشەکەوتکردنی مێژووی سکان ڕاگیرا.",
-    "toastHistoryCleared": "تەواوی مێژووی سکان سڕایەوە.",
+    "toastHistoryCleared": "تەواوی مێژووی سکان لە IndexedDB سڕایەوە.",
     "toastEntryDeleted": "تۆمارەکە لە مێژووی سکان سڕایەوە.",
     "toastThemeUpdated": "ڕووکاری بەرنامە نوێکرایەوە.",
-    "toastDataWiped": "هەموو داتا و ڕێکخستنە ناوخۆییەکان سڕانەوە.",
+    "toastDataWiped": "هەموو داتای IndexedDB و ڕێکخستنە ناوخۆییەکان سڕانەوە.",
     "toastLanguageChanged": "زمان گۆڕدرا بۆ کوردی سۆرانی.",
     "toastDecodeError": "هیچ کۆدێکی دروستی QR لەم وێنەیەدا نەدۆزرایەوە.",
     "toastTorchUnsupported": "کۆنترۆڵکردنی فلاش لەسەر ئەم کامێرایە پشتگیری ناکرێت.",
-    "navAccount": "هەژمار",
-    "accountTitle": "هەژماری بەکارهێنەر و هاوکاتکردنی تایبەت",
-    "accountSubtitle": "سکانکردنی QR بەبێ هەژمار بەردەستە. هەژمار تەنها بۆ هاوکاتکردنی تایبەت و پارێزراوی مێژووی سکانە (بەبێ ناردنی تێپەڕەوشەی وای-فای).",
-    "accountStatusGuest": "دۆخی میوان (تەنها ناوخۆیی)",
-    "accountStatusSignedIn": "چوونەژوورەوە وەک",
-    "accountLoginTab": "چوونەژوورەوە",
-    "accountRegisterTab": "تۆمارکردنی هەژمار",
-    "accountResetTab": "گەڕاندنەوەی تێپەڕەوشە",
-    "accountEmailLabel": "ناونیشانی ئیمەیڵ",
-    "accountEmailPlaceholder": "user@example.com",
-    "accountPasswordLabel": "تێپەڕەوشە (لانیکەم ٨ پیت)",
-    "accountPasswordPlaceholder": "••••••••",
-    "btnSignIn": "چوونەژوورەوە",
-    "btnCreateAccount": "دروستکردنی هەژمار",
-    "btnSendResetLink": "ناردنی بەستەری گەڕاندنەوە",
-    "btnSignOut": "چوونەدەرەوە",
-    "btnConfirmSignOut": "دڵنیایت لە چوونەدەرەوە لە هەژمارەکەت؟",
-    "btnDeleteAccount": "سڕینەوەی یەکجاری هەژمار",
-    "btnConfirmDeleteAccount": "بەڵێ، هەژمار و تۆمارەکانم بسڕەوە",
-    "accountPrivacyNoticeTitle": "پاراستنی داتای تایبەت (RLS) و سیاسەتی بێ تێپەڕەوشە",
-    "accountPrivacyNoticeDesc": "تێپەڕەوشەی وای-فای و دەقی نهێنی QR هەرگیز بۆ سێرڤەر نانێردرێن. تەنها زانیاری گشتی (کاتی سکان، جۆری پاراستن، و ناوی تۆڕ ئەگەر چالاک بێت) بە جیاکراوەیی بۆ هەژماری خۆت هەڵدەگیرێت.",
-    "accountSyncSsidLabel": "هاوکاتکردنی ناوی تۆڕ (SSID) لە مێژووی هەژماردا",
-    "accountSyncedHistoryHeading": "تۆمارە هاوکاتکراوەکانی هەژمارەکەت (جیاکراوە بە RLS)",
-    "accountSyncedHistoryEmpty": "هیچ تۆمارێکی هاوکاتکراو لەم هەژمارەدا نییە.",
-    "toastSignedIn": "بە سەرکەوتوویی چوویتە ژوورەوە!",
-    "toastRegistered": "هەژماری تایبەت بە سەرکەوتوویی دروستکرا!",
-    "toastSignedOut": "لە هەژمارەکەت چوویتە دەرەوە و داتای کاتی پاککرایەوە.",
-    "toastResetSent": "ڕێنمایی گەڕاندنەوەی تێپەڕەوشە نێردرا بۆ ئیمەیڵەکەت.",
-    "toastAccountDeleted": "هەژمار و هەموو تۆمارە پەیوەندیدارەکانت بە یەکجاری سڕانەوە."
+    "toastMultipleQrFound": "چەند کۆدێکی QR لە وێنەکەدا دۆزرایەوە — دانەیەکیان هەڵبژێرە."
   },
   "en": {
     "brandPrimary": "ZIP QR",
@@ -2321,8 +2016,8 @@ const authService = new MultiUserAuthAndRlsEngine();
     "navSettings": "Settings",
     "langKurdish": "کوردی",
     "langEnglish": "English",
-    "heroBadge": "100% Local In-Browser Decoding • Zero Server Uploads",
-    "heroDescription": "Scan any Wi-Fi QR code with your camera or upload a QR image (PNG, JPG, JPEG, WEBP) to immediately extract and reveal the exact encoded Wi-Fi Password, SSID, Security Type (WPA, WPA2, WPA3, WEP, Open, DPP), and Hidden Network Status.",
+    "heroBadge": "100% Local In-Browser Decoding • No Login • Zero Server Uploads",
+    "heroDescription": "Scan any Wi-Fi QR code with your camera or upload a QR image (PNG, JPG, JPEG, WEBP) to immediately extract and reveal the exact encoded Wi-Fi Password, SSID, Security Type (WPA, WPA2, WPA3, WEP, Open, DPP), and keep persistent local History on your device.",
     "btnScanQrCode": "SCAN QR CODE",
     "btnUploadQrImage": "UPLOAD QR IMAGE",
     "card1Step": "1. Live Camera",
@@ -2339,9 +2034,12 @@ const authService = new MultiUserAuthAndRlsEngine();
     "card3Placeholder": "Paste WIFI:... or DPP:... payload here",
     "card3Btn": "DECODE QR CONTENT",
     "recentHeading": "Recently Scanned Codes",
-    "recentSubheading": "Locally saved QR scans on this device",
+    "recentSubheading": "Persisted in your browser IndexedDB database with saved Wi-Fi passwords",
     "btnManageHistory": "Manage History",
     "emptyRecentText": "No QR codes scanned yet. Use SCAN QR CODE, UPLOAD QR IMAGE, or PASTE QR CONTENT above to decode a QR code.",
+    "multiQrTitle": "Multiple QR Codes Detected in Image",
+    "multiQrSubtitle": "Select which detected QR code you want to inspect:",
+    "btnSelectThisQr": "Open This QR Code",
     "scannerTitle": "Live Wi-Fi QR Scanner",
     "scannerSubtitle": "Align the Wi-Fi QR code inside the frame or select an image from your gallery.",
     "btnCancel": "Cancel",
@@ -2355,9 +2053,11 @@ const authService = new MultiUserAuthAndRlsEngine();
     "btnFallbackUpload": "Upload QR Image Instead",
     "defaultCameraLabel": "Default Environment Camera",
     "cameraItemPrefix": "Camera",
+    "btnSwitchCamera": "Switch Camera",
     "flashlightOn": "Flashlight: ON",
     "flashlightOff": "Flashlight: OFF",
     "flashlightNA": "Flashlight N/A",
+    "zoomLabel": "Zoom",
     "btnUploadFromGallery": "Upload from Gallery",
     "resultsEmptyTitle": "No QR Code Scanned Yet",
     "resultsEmptyDesc": "Scan a Wi-Fi QR code with your camera, upload a QR image, or paste QR content on the Home page.",
@@ -2370,7 +2070,7 @@ const authService = new MultiUserAuthAndRlsEngine();
     "btnShowPassword": "SHOW PASSWORD",
     "btnHidePassword": "HIDE PASSWORD",
     "btnCopyPassword": "COPY PASSWORD",
-    "passwordExactNote": "Decoded locally directly from the QR code payload with full special-character unescaping.",
+    "passwordExactNote": "Decoded locally directly from the QR code payload with full special-character unescaping and saved to local IndexedDB History.",
     "noPasswordEncodedMsg": "No password is encoded in this QR code.",
     "openNetworkNoPasswordMsg": "Open network — no password required.",
     "dppNoPasswordMsg": "No password is encoded in this QR code. DPP uses cryptographic public-key bootstrapping instead of a plaintext Wi-Fi password.",
@@ -2393,19 +2093,21 @@ const authService = new MultiUserAuthAndRlsEngine();
     "hiddenNo": "No",
     "hiddenNA": "N/A",
     "historyTitle": "Scan History",
-    "historySubtitle": "View previously scanned QR codes. Stored strictly locally on your device.",
+    "historySubtitle": "Previously scanned networks and their actual Wi-Fi passwords are stored persistently in local browser IndexedDB across sessions and restarts.",
+    "historyStorageBadge": "Persistent IndexedDB Storage • Strictly Local on This Device",
     "labelSaveHistory": "Save Scan History",
     "btnClearAllHistory": "Clear All History",
     "modalClearTitle": "Confirm Clearing All Scan History",
-    "modalClearDesc": "Are you sure you want to permanently delete all saved scan history entries from your browser?",
+    "modalClearDesc": "Are you sure you want to permanently delete all saved scan history records and passwords from your browser IndexedDB database?",
     "btnConfirmClear": "Yes, Delete All",
     "historySearchPlaceholder": "Search history by network name (SSID), security protocol, or format...",
     "historyEmptyText": "Your local scan history is currently empty.",
     "historyNoMatchText": "No scan history entries match your search filter.",
-    "btnOpenResult": "Open Result",
+    "btnOpenResult": "Full Details",
     "btnDeleteEntry": "Delete",
     "badgeHiddenSsid": "Hidden SSID",
-    "historyPasswordExtractedPrefix": "Password extracted",
+    "badgeSavedPassword": "Saved Password",
+    "historyPasswordExtractedPrefix": "Saved password",
     "settingsTitle": "Settings & Privacy",
     "settingsSubtitle": "Customize language, theme accents, password masking defaults, and local storage privacy controls.",
     "settingsLanguageHeading": "Language / زمان",
@@ -2418,17 +2120,19 @@ const authService = new MultiUserAuthAndRlsEngine();
     "theme3Title": "Emerald Security",
     "theme3Desc": "High-contrast tactical dark theme",
     "maskPasswordTitle": "Mask Password by Default on Results Page",
-    "maskPasswordDesc": "Start with password masked (••••••) until you tap SHOW PASSWORD",
-    "historyPrefsHeading": "History Preferences",
-    "enableHistoryTitle": "Enable Local Scan History",
-    "enableHistoryDesc": "Automatically save decoded QR codes in your browser's local storage",
-    "privacyHeading": "Privacy Information & Data Control",
-    "privacyCard1Title": "100% Client-Side Execution",
-    "privacyCard1Desc": "Camera streams and uploaded QR images are decoded entirely inside your browser. Passwords are never transmitted to any external server or analytics service.",
-    "privacyCard2Title": "Untrusted Input & Export Safety",
-    "privacyCard2Desc": "Scanned URLs are never opened automatically, and exported files use neutral timestamped filenames so credentials never leak in file names.",
-    "btnClearAllStoredData": "Clear All Stored Data (History & Preferences)",
-    "confirmWipePrompt": "Confirm wiping all saved history and resetting settings?",
+    "maskPasswordDesc": "Start with password masked (••••••••) on the Results page until you tap SHOW PASSWORD (passwords in History are always masked by default).",
+    "historyPrefsHeading": "IndexedDB History Preferences",
+    "enableHistoryTitle": "Enable Persistent Local History (Including Wi-Fi Passwords)",
+    "enableHistoryDesc": "Automatically save scanned networks and actual Wi-Fi passwords in your browser IndexedDB database so they remain available after closing the browser or restarting your device.",
+    "privacyHeading": "Privacy Architecture & Technical Transparency",
+    "privacyCard1Title": "100% Client-Side Execution (Zero Server Uploads)",
+    "privacyCard1Desc": "Camera frames, uploaded QR images, SSIDs, and Wi-Fi passwords are decoded and stored strictly inside your browser. No scan data is ever sent to Cloudflare Functions, external APIs, or analytics servers.",
+    "privacyCard2Title": "Local Browser Storage Model & Realistic Limitations",
+    "privacyCard2Desc": "History and saved passwords are stored in browser-local IndexedDB without requiring an account. Passwords are masked (••••••••) in the UI and excluded from console logs, but anyone with direct access to the same unlocked browser profile or device storage can access saved History.",
+    "privacyCard3Title": "Update-Safe Persistence",
+    "privacyCard3Desc": "PWA Service Worker updates only refresh static application caches and never erase your IndexedDB Wi-Fi History unless you explicitly clear History or wipe browser site data.",
+    "btnClearAllStoredData": "Clear All Stored Data (IndexedDB History & Preferences)",
+    "confirmWipePrompt": "Confirm wiping all IndexedDB history and resetting settings?",
     "btnConfirmWipe": "Confirm Wipe",
     "aboutHeading": "About ZIP QR — Wi-Fi QR Decoder",
     "aboutDescription": "ZIP QR — Wi-Fi QR Decoder (PWA) — SCAN. REVEAL. CONNECT. Designed for iPhones, iPads, Android phones & tablets, Windows, MacBooks, and Linux computers. Supports WPA, WPA2, WPA3-SAE, WPA2-EAP, WEP, Open (nopass), hidden networks, escaped special characters (\\; \\, \\: \\\\ \\\"), and Wi-Fi Easy Connect (DPP:).",
@@ -2443,8 +2147,8 @@ const authService = new MultiUserAuthAndRlsEngine();
     "creatorContactBtn": "Contact via Email",
     "creatorEmailLabel": "Contact Email",
     "footerLeft": "ZIP QR — Wi-Fi QR Decoder • SCAN. REVEAL. CONNECT.",
-    "footerRight": "100% Local In-Browser QR Decoding • Zero Cloud Uploads",
-    "toastPasswordExtracted": "Password extracted for",
+    "footerRight": "100% Local In-Browser QR Decoding • No Accounts • Zero Cloud Uploads",
+    "toastPasswordExtracted": "Password extracted and saved locally for",
     "toastDecodedPayload": "Decoded QR code",
     "toastPasswordCopied": "Wi-Fi Password copied to clipboard!",
     "toastSsidCopied": "SSID copied to clipboard!",
@@ -2452,52 +2156,28 @@ const authService = new MultiUserAuthAndRlsEngine();
     "toastDownloadedTxt": "Downloaded decoded report (.txt)",
     "toastDownloadedJson": "Downloaded decoded JSON (.json)",
     "toastEnterPayload": "Please enter a QR payload string to decode.",
-    "toastHistoryEnabled": "Scan history enabled.",
+    "toastHistoryEnabled": "Persistent IndexedDB scan history enabled.",
     "toastHistoryPaused": "Scan history paused.",
-    "toastHistoryCleared": "Cleared all scan history.",
-    "toastEntryDeleted": "Deleted entry from scan history.",
+    "toastHistoryCleared": "Cleared all records from IndexedDB scan history.",
+    "toastEntryDeleted": "Deleted entry from IndexedDB scan history.",
     "toastThemeUpdated": "Theme updated.",
-    "toastDataWiped": "All local data and preferences have been cleared.",
+    "toastDataWiped": "All local IndexedDB history and preferences have been cleared.",
     "toastLanguageChanged": "Language switched to English.",
     "toastDecodeError": "Could not decode a valid QR code from this image.",
     "toastTorchUnsupported": "Flashlight control not supported on this camera.",
-    "navAccount": "Account",
-    "accountTitle": "User Account & Private Sync",
-    "accountSubtitle": "Scanning works without registration. Accounts are optional and used strictly for RLS-isolated metadata history sync (Wi-Fi passwords are never uploaded).",
-    "accountStatusGuest": "Guest Mode (Local Only)",
-    "accountStatusSignedIn": "Signed in as",
-    "accountLoginTab": "Sign In",
-    "accountRegisterTab": "Register",
-    "accountResetTab": "Reset Password",
-    "accountEmailLabel": "Email Address",
-    "accountEmailPlaceholder": "user@example.com",
-    "accountPasswordLabel": "Password (min. 8 chars)",
-    "accountPasswordPlaceholder": "••••••••",
-    "btnSignIn": "Sign In",
-    "btnCreateAccount": "Create Account",
-    "btnSendResetLink": "Send Password Reset",
-    "btnSignOut": "Sign Out",
-    "btnConfirmSignOut": "Confirm signing out of your account?",
-    "btnDeleteAccount": "Delete Account Permanently",
-    "btnConfirmDeleteAccount": "Yes, Delete My Account & Records",
-    "accountPrivacyNoticeTitle": "Row-Level Security (RLS) & Zero-Password Server Policy",
-    "accountPrivacyNoticeDesc": "Plaintext Wi-Fi passwords and raw QR payloads are never uploaded to any server. Only non-sensitive metadata (timestamp, security type, and optional SSID) is isolated to your account.",
-    "accountSyncSsidLabel": "Include network name (SSID) in account metadata sync",
-    "accountSyncedHistoryHeading": "Your Isolated Account Metadata Records (RLS Protected)",
-    "accountSyncedHistoryEmpty": "No synchronized metadata records for this account yet.",
-    "toastSignedIn": "Signed in to your account!",
-    "toastRegistered": "Account created and isolated session started!",
-    "toastSignedOut": "Signed out and cleared private in-memory session state.",
-    "toastResetSent": "Password reset instructions dispatched to your email.",
-    "toastAccountDeleted": "Your account and all associated records have been permanently deleted."
+    "toastMultipleQrFound": "Multiple QR codes detected in image — select one below."
   }
 };
 
     // =========================================================================
-    // APPLICATION STATE & STORAGE MANAGEMENT
+    // PERSISTENT INDEXEDDB HISTORY & SETTINGS MANAGEMENT (NO ACCOUNTS / LOCAL-ONLY)
     // =========================================================================
+    const IDB_DATABASE_NAME = 'zip_qr_local_db';
+    const IDB_SCHEMA_VERSION = 2;
+    const IDB_HISTORY_STORE = 'scan_history';
+
     const STORAGE_KEYS = {
-      HISTORY: 'zip_wifi_qr_history_v1',
+      LEGACY_HISTORY: 'zip_wifi_qr_history_v1',
       SETTINGS: 'zip_wifi_qr_settings_v1',
       LANGUAGE: 'zip_qr_lang_v1'
     };
@@ -2511,24 +2191,50 @@ const authService = new MultiUserAuthAndRlsEngine();
     };
 
     let scanHistory = [];
+    let idbInstance = null;
     let currentResult = null;
     let currentSourceLabel = '';
     let isPasswordVisible = true;
+    let revealedHistoryPasswords = new Set();
     let activeStream = null;
+    let availableCameras = [];
     let scanIntervalId = null;
     let rvfcHandle = null;
     let isDecodingFrame = false;
     let lastDecodedPayload = '';
     let lastDecodedTime = 0;
     let torchEnabled = false;
-    let activeAuthTab = 'login';
 
     function getT() {
       const lang = appSettings.language === 'en' ? 'en' : 'ckb';
       return TRANSLATIONS[lang];
     }
 
-    function loadStoredState() {
+    function normalizeHistoryEntry(input) {
+      const isEntry = input && input.result && typeof input.result === 'object';
+      const res = isEntry ? input.result : input;
+      const explicitPassword = isEntry && input.password !== undefined ? input.password : (res.password !== undefined ? res.password : null);
+      const hasPassword = Boolean(res.hasPasswordField && explicitPassword !== null && String(explicitPassword).length > 0);
+      const normalizedResult = Object.assign({}, res, {
+        password: explicitPassword,
+        hasPasswordField: res.hasPasswordField !== undefined ? res.hasPasswordField : explicitPassword !== null
+      });
+      return {
+        id: (isEntry ? input.id : res.id) || ('scan_' + Date.now()),
+        timestamp: (isEntry ? input.timestamp : res.timestamp) || new Date().toISOString(),
+        ssid: (isEntry ? input.ssid : res.ssid) || '(Unnamed Network)',
+        password: explicitPassword,
+        hasPassword: hasPassword,
+        securityType: res.securityType || 'Unknown',
+        securityDisplay: (isEntry ? input.securityDisplay : res.securityDisplay) || 'Unknown',
+        hiddenNetwork: Boolean(res.hiddenNetwork),
+        category: (isEntry ? input.category : res.category) || 'WIFI',
+        formatLabel: res.formatLabel || 'Wi-Fi Network Configuration (WIFI:)',
+        result: normalizedResult
+      };
+    }
+
+    function loadStoredSettings() {
       try {
         const rawSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
         const savedLang = localStorage.getItem(STORAGE_KEYS.LANGUAGE);
@@ -2545,10 +2251,12 @@ const authService = new MultiUserAuthAndRlsEngine();
         appSettings.language = 'ckb';
       }
       try {
-        const rawHistory = localStorage.getItem(STORAGE_KEYS.HISTORY);
-        if (rawHistory) {
-          const parsed = JSON.parse(rawHistory);
-          if (Array.isArray(parsed)) scanHistory = parsed;
+        const rawLegacy = localStorage.getItem(STORAGE_KEYS.LEGACY_HISTORY);
+        if (rawLegacy) {
+          const parsed = JSON.parse(rawLegacy);
+          if (Array.isArray(parsed)) {
+            scanHistory = parsed.map(normalizeHistoryEntry);
+          }
         }
       } catch (e) {}
     }
@@ -2561,11 +2269,131 @@ const authService = new MultiUserAuthAndRlsEngine();
       applySettingsToUI();
     }
 
-    function saveHistoryState() {
+    async function initIndexedDBHistory() {
       try {
-        localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(scanHistory));
+        if (navigator.storage && typeof navigator.storage.persist === 'function') {
+          navigator.storage.persist().catch(() => {});
+        }
       } catch (e) {}
-      renderHistoryViews();
+
+      if (typeof indexedDB === 'undefined' || !indexedDB) {
+        renderHistoryViews();
+        return;
+      }
+
+      try {
+        idbInstance = await new Promise((resolve, reject) => {
+          const req = indexedDB.open(IDB_DATABASE_NAME, IDB_SCHEMA_VERSION);
+          req.onupgradeneeded = (event) => {
+            const db = req.result;
+            const tx = req.transaction;
+            let store;
+            if (!db.objectStoreNames.contains(IDB_HISTORY_STORE)) {
+              store = db.createObjectStore(IDB_HISTORY_STORE, { keyPath: 'id' });
+            } else {
+              store = tx.objectStore(IDB_HISTORY_STORE);
+            }
+            if (!store.indexNames.contains('by_timestamp')) {
+              store.createIndex('by_timestamp', 'timestamp', { unique: false });
+            }
+            if (!store.indexNames.contains('by_ssid')) {
+              store.createIndex('by_ssid', 'ssid', { unique: false });
+            }
+            const oldVersion = event.oldVersion || 0;
+            if (oldVersion > 0 && oldVersion < 2) {
+              const curReq = store.openCursor();
+              curReq.onsuccess = () => {
+                const cursor = curReq.result;
+                if (cursor) {
+                  cursor.update(normalizeHistoryEntry(cursor.value));
+                  cursor.continue();
+                }
+              };
+            }
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+
+        const idbRows = await new Promise((resolve) => {
+          const tx = idbInstance.transaction(IDB_HISTORY_STORE, 'readonly');
+          const store = tx.objectStore(IDB_HISTORY_STORE);
+          const getAllReq = store.getAll();
+          getAllReq.onsuccess = () => resolve(Array.isArray(getAllReq.result) ? getAllReq.result.map(normalizeHistoryEntry) : []);
+          getAllReq.onerror = () => resolve([]);
+        });
+
+        const merged = new Map();
+        [...scanHistory, ...idbRows].forEach((entry) => {
+          const norm = normalizeHistoryEntry(entry);
+          if (!merged.has(norm.id)) merged.set(norm.id, norm);
+        });
+
+        scanHistory = Array.from(merged.values())
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+          .slice(0, 200);
+
+        // Persist any migrated records into IndexedDB and remove legacy localStorage key
+        for (const item of scanHistory) {
+          await idbPutRecord(item);
+        }
+        try {
+          if (localStorage.getItem(STORAGE_KEYS.LEGACY_HISTORY)) {
+            localStorage.removeItem(STORAGE_KEYS.LEGACY_HISTORY);
+          }
+        } catch (e) {}
+
+        if (!currentResult && scanHistory.length > 0) {
+          currentResult = scanHistory[0].result;
+          currentSourceLabel = 'Recent History';
+          renderResultsPage();
+        }
+        renderHistoryViews();
+      } catch (e) {
+        renderHistoryViews();
+      }
+    }
+
+    function idbPutRecord(entry) {
+      if (!idbInstance) return Promise.resolve(false);
+      return new Promise((resolve) => {
+        try {
+          const tx = idbInstance.transaction(IDB_HISTORY_STORE, 'readwrite');
+          tx.objectStore(IDB_HISTORY_STORE).put(entry);
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => resolve(false);
+        } catch (e) {
+          resolve(false);
+        }
+      });
+    }
+
+    function idbDeleteRecord(id) {
+      if (!idbInstance) return Promise.resolve(false);
+      return new Promise((resolve) => {
+        try {
+          const tx = idbInstance.transaction(IDB_HISTORY_STORE, 'readwrite');
+          tx.objectStore(IDB_HISTORY_STORE).delete(id);
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => resolve(false);
+        } catch (e) {
+          resolve(false);
+        }
+      });
+    }
+
+    function idbClearAllRecords() {
+      if (!idbInstance) return Promise.resolve(false);
+      return new Promise((resolve) => {
+        try {
+          const tx = idbInstance.transaction(IDB_HISTORY_STORE, 'readwrite');
+          tx.objectStore(IDB_HISTORY_STORE).clear();
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => resolve(false);
+        } catch (e) {
+          resolve(false);
+        }
+      });
     }
 
     function showToast(message) {
@@ -2708,17 +2536,12 @@ const authService = new MultiUserAuthAndRlsEngine();
       }
 
       const torchBtn = document.getElementById('scannerTorchBtn');
-      if (torchBtn) {
-        if (torchBtn.disabled) {
-          torchBtn.textContent = t.flashlightNA;
-        } else {
-          torchBtn.textContent = torchEnabled ? t.flashlightOn : t.flashlightOff;
-        }
+      if (torchBtn && !torchBtn.classList.contains('hidden')) {
+        torchBtn.textContent = torchEnabled ? t.flashlightOn : t.flashlightOff;
       }
 
       renderResultsPage();
       renderHistoryViews();
-      void renderAccountPage();
     }
 
     function setLanguage(newLang) {
@@ -2735,7 +2558,7 @@ const authService = new MultiUserAuthAndRlsEngine();
       if (pageId !== 'scanner') {
         stopLiveCameraScanner();
       }
-      const pages = ['home', 'scanner', 'results', 'history', 'account', 'settings'];
+      const pages = ['home', 'scanner', 'results', 'history', 'settings'];
       pages.forEach((p) => {
         const el = document.getElementById('page-' + p);
         if (el) {
@@ -2759,14 +2582,12 @@ const authService = new MultiUserAuthAndRlsEngine();
         renderResultsPage();
       } else if (pageId === 'history') {
         renderHistoryViews();
-      } else if (pageId === 'account') {
-        void renderAccountPage();
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     // =========================================================================
-    // HANDLE DECODED QR PAYLOAD
+    // HANDLE DECODED QR PAYLOAD & MULTI-QR SELECTION
     // =========================================================================
     function handleDecodedQR(rawPayload, sourceLabel) {
       const t = getT();
@@ -2775,26 +2596,22 @@ const authService = new MultiUserAuthAndRlsEngine();
       currentSourceLabel = sourceLabel || 'QR Scan';
       isPasswordVisible = !appSettings.autoMaskPassword;
 
+      const multiModal = document.getElementById('multiQrModal');
+      if (multiModal) multiModal.classList.add('hidden');
+
       if (appSettings.historyEnabled) {
-        const entry = {
-          id: parsed.id,
-          timestamp: parsed.timestamp,
-          ssid: parsed.ssid,
-          category: parsed.category,
-          securityDisplay: parsed.securityDisplay,
-          result: parsed
-        };
+        const entry = normalizeHistoryEntry(parsed);
+        // Remove duplicates of the exact same payload
+        const duplicates = scanHistory.filter((item) => item.id === entry.id || item.result.rawPayload === parsed.rawPayload);
+        duplicates.forEach((d) => {
+          void idbDeleteRecord(d.id);
+        });
         scanHistory = [
           entry,
-          ...scanHistory.filter((item) => item.result.rawPayload !== parsed.rawPayload)
-        ].slice(0, 50);
-        saveHistoryState();
-
-        // If user is signed in to an account, sync ONLY non-sensitive metadata under RLS
-        const session = authService.getCurrentSession();
-        if (session) {
-          authService.insertSyncedScanRecord(parsed, undefined, session.accessToken).catch(() => {});
-        }
+          ...scanHistory.filter((item) => item.id !== entry.id && item.result.rawPayload !== parsed.rawPayload)
+        ].slice(0, 200);
+        void idbPutRecord(entry);
+        renderHistoryViews();
       }
 
       navigateTo('results');
@@ -2805,107 +2622,56 @@ const authService = new MultiUserAuthAndRlsEngine();
       }
     }
 
-    // =========================================================================
-    // RENDER MULTI-USER ACCOUNT PAGE
-    // =========================================================================
-    async function renderAccountPage() {
-      const t = getT();
-      const session = authService.getCurrentSession();
-      const guestCard = document.getElementById('accountGuestFormCard');
-      const authWrap = document.getElementById('accountAuthenticatedWrap');
-      const statusBadge = document.getElementById('accountStatusBadge');
-      const statusDot = document.getElementById('accountStatusDot');
-      const statusText = document.getElementById('accountStatusText');
-
-      if (!guestCard || !authWrap) return;
-
-      if (!session) {
-        guestCard.classList.remove('hidden');
-        authWrap.classList.add('hidden');
-        statusBadge.className = 'inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-3.5 py-2 text-xs font-bold text-slate-300';
-        statusDot.className = 'h-2 w-2 rounded-full bg-sky-400';
-        statusText.textContent = t.accountStatusGuest;
-
-        const passRow = document.getElementById('accountPasswordRow');
-        const submitBtn = document.getElementById('accountSubmitAuthBtn');
-        if (activeAuthTab === 'reset') {
-          passRow.classList.add('hidden');
-          submitBtn.textContent = t.btnSendResetLink;
-        } else {
-          passRow.classList.remove('hidden');
-          submitBtn.textContent = activeAuthTab === 'login' ? t.btnSignIn : t.btnCreateAccount;
-        }
+    function handleUploadedPayloads(payloads, sourceLabel) {
+      if (!payloads || payloads.length === 0) {
+        showToast(getT().toastDecodeError);
         return;
       }
+      if (payloads.length === 1) {
+        handleDecodedQR(payloads[0], sourceLabel);
+        return;
+      }
+      const t = getT();
+      const modal = document.getElementById('multiQrModal');
+      const container = document.getElementById('multiQrListContainer');
+      if (!modal || !container) {
+        handleDecodedQR(payloads[0], sourceLabel);
+        return;
+      }
+      container.innerHTML = '';
+      payloads.forEach((raw) => {
+        const parsed = parseQRPayload(raw);
+        const card = document.createElement('div');
+        card.className = 'flex items-center justify-between gap-3 rounded-2xl border border-slate-700 bg-[#070b16] p-4';
 
-      guestCard.classList.add('hidden');
-      authWrap.classList.remove('hidden');
-      statusBadge.className = 'inline-flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3.5 py-2 text-xs font-bold text-emerald-300';
-      statusDot.className = 'h-2 w-2 rounded-full bg-emerald-400';
-      statusText.textContent = t.accountStatusSignedIn + ': ' + session.user.email;
+        const left = document.createElement('div');
+        left.className = 'min-w-0';
+        const badge = document.createElement('span');
+        badge.setAttribute('dir', 'ltr');
+        badge.className = 'rounded border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold text-sky-300';
+        badge.textContent = parsed.category === 'WIFI' ? parsed.securityType : parsed.category;
+        const ssid = document.createElement('p');
+        ssid.setAttribute('dir', 'ltr');
+        ssid.className = 'font-mono-code mt-1.5 truncate text-sm font-bold text-white';
+        ssid.textContent = parsed.ssid;
+        left.appendChild(badge);
+        left.appendChild(ssid);
 
-      const uidDisplay = document.getElementById('accountUidDisplay');
-      if (uidDisplay) uidDisplay.textContent = 'UID: ' + session.user.id;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'zip-gradient-btn rounded-xl px-3.5 py-2 text-xs font-bold text-white shrink-0';
+        btn.textContent = t.btnSelectThisQr;
+        btn.addEventListener('click', () => {
+          modal.classList.add('hidden');
+          handleDecodedQR(raw, sourceLabel);
+        });
 
-      try {
-        const userSettings = await authService.getUserSettings(session.accessToken);
-        const ssidCheck = document.getElementById('accountSyncSsidCheckbox');
-        if (ssidCheck && userSettings) {
-          ssidCheck.checked = Boolean(userSettings.sync_ssid_opt_in);
-        }
-
-        const list = await authService.listSyncedScanHistory(1, 20, session.accessToken);
-        const countBadge = document.getElementById('accountSyncedCountBadge');
-        if (countBadge) countBadge.textContent = '(' + list.totalCount + ')';
-
-        const container = document.getElementById('accountSyncedListContainer');
-        if (container) {
-          container.innerHTML = '';
-          if (list.items.length === 0) {
-            const p = document.createElement('p');
-            p.className = 'text-xs text-slate-400';
-            p.textContent = t.accountSyncedHistoryEmpty;
-            container.appendChild(p);
-          } else {
-            list.items.forEach((rec) => {
-              const row = document.createElement('div');
-              row.className = 'flex items-center justify-between gap-3 rounded-2xl border border-slate-800 zip-card p-3.5';
-              const left = document.createElement('div');
-              const top = document.createElement('div');
-              top.className = 'flex items-center gap-2';
-              const b = document.createElement('span');
-              b.setAttribute('dir', 'ltr');
-              b.className = 'rounded-md border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold text-sky-300';
-              b.textContent = rec.security_type;
-              const s = document.createElement('span');
-              s.setAttribute('dir', 'ltr');
-              s.className = 'font-mono-code text-xs font-bold text-white';
-              s.textContent = rec.ssid || '(SSID Redacted)';
-              top.appendChild(b);
-              top.appendChild(s);
-              const dt = document.createElement('p');
-              dt.setAttribute('dir', 'ltr');
-              dt.className = 'mt-1 text-[11px] text-slate-400';
-              dt.textContent = new Date(rec.scanned_at).toLocaleString();
-              left.appendChild(top);
-              left.appendChild(dt);
-
-              const del = document.createElement('button');
-              del.type = 'button';
-              del.className = 'rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-500/20';
-              del.textContent = t.btnDeleteEntry;
-              del.addEventListener('click', async () => {
-                await authService.deleteSyncedScanRecord(rec.id, session.accessToken);
-                void renderAccountPage();
-              });
-
-              row.appendChild(left);
-              row.appendChild(del);
-              container.appendChild(row);
-            });
-          }
-        }
-      } catch (e) {}
+        card.appendChild(left);
+        card.appendChild(btn);
+        container.appendChild(card);
+      });
+      modal.classList.remove('hidden');
+      showToast(t.toastMultipleQrFound);
     }
 
     // =========================================================================
@@ -2948,9 +2714,7 @@ const authService = new MultiUserAuthAndRlsEngine();
         noPassNotice.classList.add('hidden');
         passCharCount.textContent = currentResult.password.length + ' ' + t.charsSuffix;
         passCharCount.classList.remove('hidden');
-        passField.textContent = isPasswordVisible
-          ? currentResult.password
-          : '•'.repeat(Math.min(24, Math.max(8, currentResult.password.length)));
+        passField.textContent = isPasswordVisible ? currentResult.password : '••••••••';
         toggleBtn.textContent = isPasswordVisible ? t.btnHidePassword : t.btnShowPassword;
       } else {
         passValContainer.classList.add('hidden');
@@ -2982,7 +2746,7 @@ const authService = new MultiUserAuthAndRlsEngine();
       document.getElementById('infoSsid').textContent = currentResult.ssid;
       document.getElementById('infoPassword').textContent =
         currentResult.hasPasswordField && currentResult.password !== null
-          ? currentResult.password
+          ? (isPasswordVisible ? currentResult.password : '••••••••')
           : localizedNoPassMsg;
       document.getElementById('infoSecurity').textContent = currentResult.securityDisplay;
       document.getElementById('infoHidden').textContent = localizedHidden;
@@ -3015,13 +2779,20 @@ const authService = new MultiUserAuthAndRlsEngine();
     }
 
     // =========================================================================
-    // RENDER HISTORY LISTS
+    // RENDER PERSISTENT HISTORY CARDS (WITH MASKED SAVED PASSWORDS + REVEAL/COPY)
     // =========================================================================
     function createHistoryCardElement(entry, compact) {
       const t = getT();
       const res = entry.result;
-      const row = document.createElement('div');
-      row.className = 'flex flex-col justify-between gap-3 rounded-2xl border border-slate-800/90 zip-card p-4 transition hover:border-sky-500/40 sm:flex-row sm:items-center';
+      const savedPass = entry.password !== undefined ? entry.password : res.password;
+      const hasSavedPassword = Boolean(res.hasPasswordField && savedPass !== null && String(savedPass).length > 0);
+      const isRevealed = revealedHistoryPasswords.has(entry.id);
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flex flex-col justify-between gap-3 rounded-2xl border border-slate-800/90 zip-card p-4 transition hover:border-sky-500/40';
+
+      const topRow = document.createElement('div');
+      topRow.className = 'flex flex-col justify-between gap-3 sm:flex-row sm:items-center';
 
       const left = document.createElement('div');
       left.className = 'min-w-0 flex-1';
@@ -3034,6 +2805,13 @@ const authService = new MultiUserAuthAndRlsEngine();
       catBadge.className = 'rounded-lg border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-sky-300';
       catBadge.textContent = res.category === 'WIFI' ? res.securityType : res.category;
       badges.appendChild(catBadge);
+
+      if (hasSavedPassword) {
+        const pBadge = document.createElement('span');
+        pBadge.className = 'rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300';
+        pBadge.textContent = t.badgeSavedPassword;
+        badges.appendChild(pBadge);
+      }
 
       if (res.hiddenNetwork) {
         const hBadge = document.createElement('span');
@@ -3056,13 +2834,13 @@ const authService = new MultiUserAuthAndRlsEngine();
       left.appendChild(badges);
       left.appendChild(title);
 
-      if (!compact) {
+      if (!compact && !hasSavedPassword) {
         const sub = document.createElement('p');
         sub.className = 'mt-1 truncate text-xs text-slate-400';
-        sub.textContent = res.hasPasswordField && res.password !== null
-          ? t.historyPasswordExtractedPrefix + ' (' + res.password.length + ' ' + t.charsSuffix + ') • ' + res.securityDisplay
-          : res.securityType === 'nopass'
+        sub.textContent = res.securityType === 'nopass'
           ? t.openNetworkNoPasswordMsg
+          : res.category === 'DPP'
+          ? t.dppNoPasswordMsg
           : t.noPasswordEncodedMsg;
         left.appendChild(sub);
       }
@@ -3089,15 +2867,78 @@ const authService = new MultiUserAuthAndRlsEngine();
         delBtn.textContent = t.btnDeleteEntry;
         delBtn.addEventListener('click', () => {
           scanHistory = scanHistory.filter((item) => item.id !== entry.id);
-          saveHistoryState();
+          revealedHistoryPasswords.delete(entry.id);
+          void idbDeleteRecord(entry.id);
+          renderHistoryViews();
           showToast(getT().toastEntryDeleted);
         });
         actions.appendChild(delBtn);
       }
 
-      row.appendChild(left);
-      row.appendChild(actions);
-      return row;
+      topRow.appendChild(left);
+      topRow.appendChild(actions);
+      wrapper.appendChild(topRow);
+
+      // Saved Password Row inside History Card (Masked by default: •••••••• with Show/Hide & Copy)
+      if (hasSavedPassword) {
+        const passRow = document.createElement('div');
+        passRow.className = 'flex flex-col justify-between gap-2.5 rounded-xl border border-slate-800 bg-[#050811] px-3.5 py-2.5 sm:flex-row sm:items-center';
+
+        const passLeft = document.createElement('div');
+        passLeft.className = 'flex items-center gap-2.5 min-w-0';
+
+        const lbl = document.createElement('span');
+        lbl.className = 'text-[11px] font-bold uppercase tracking-wider text-slate-400 shrink-0';
+        lbl.textContent = t.infoLabel2Password + ':';
+
+        const val = document.createElement('span');
+        val.setAttribute('dir', 'ltr');
+        val.className = 'font-mono-code text-sm font-bold text-sky-300 truncate';
+        val.textContent = isRevealed ? String(savedPass) : '••••••••';
+
+        const lenBadge = document.createElement('span');
+        lenBadge.setAttribute('dir', 'ltr');
+        lenBadge.className = 'rounded bg-slate-800 px-1.5 py-0.5 font-mono-code text-[10px] text-slate-400 shrink-0';
+        lenBadge.textContent = String(savedPass).length + ' ' + t.charsSuffix;
+
+        passLeft.appendChild(lbl);
+        passLeft.appendChild(val);
+        passLeft.appendChild(lenBadge);
+
+        const passBtns = document.createElement('div');
+        passBtns.className = 'flex items-center gap-2 shrink-0';
+
+        const toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.className = 'rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-200 hover:border-sky-400 hover:text-white';
+        toggleBtn.textContent = isRevealed ? t.btnHidePassword : t.btnShowPassword;
+        toggleBtn.addEventListener('click', () => {
+          if (revealedHistoryPasswords.has(entry.id)) {
+            revealedHistoryPasswords.delete(entry.id);
+          } else {
+            revealedHistoryPasswords.add(entry.id);
+          }
+          renderHistoryViews();
+        });
+
+        const copyBtn = document.createElement('button');
+        copyBtn.type = 'button';
+        copyBtn.className = 'zip-gradient-btn rounded-lg px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white hover:brightness-110';
+        copyBtn.textContent = t.btnCopyPassword;
+        copyBtn.addEventListener('click', async () => {
+          const ok = await copyToClipboardSafe(String(savedPass));
+          if (ok) showToast(getT().toastPasswordCopied);
+        });
+
+        passBtns.appendChild(toggleBtn);
+        passBtns.appendChild(copyBtn);
+
+        passRow.appendChild(passLeft);
+        passRow.appendChild(passBtns);
+        wrapper.appendChild(passRow);
+      }
+
+      return wrapper;
     }
 
     function renderHistoryViews() {
@@ -3130,7 +2971,8 @@ const authService = new MultiUserAuthAndRlsEngine();
           return (
             item.ssid.toLowerCase().includes(q) ||
             item.category.toLowerCase().includes(q) ||
-            item.securityDisplay.toLowerCase().includes(q)
+            item.securityDisplay.toLowerCase().includes(q) ||
+            (item.securityType && item.securityType.toLowerCase().includes(q))
           );
         });
 
@@ -3148,7 +2990,7 @@ const authService = new MultiUserAuthAndRlsEngine();
     }
 
     // =========================================================================
-    // HIGH-SPEED LIVE CAMERA SCANNER LIFECYCLE (requestVideoFrameCallback + ROI)
+    // HIGH-SPEED LIVE CAMERA SCANNER LIFECYCLE (requestVideoFrameCallback + ROI + Hardware Capabilities)
     // =========================================================================
     function stopLiveCameraScanner() {
       if (scanIntervalId !== null) {
@@ -3205,6 +3047,19 @@ const authService = new MultiUserAuthAndRlsEngine();
       const statusPill = document.getElementById('scannerStatusPill');
       const torchBtn = document.getElementById('scannerTorchBtn');
       const camSelect = document.getElementById('cameraDeviceSelect');
+      const switchCamBtn = document.getElementById('scannerSwitchCameraBtn');
+      const zoomWrap = document.getElementById('scannerZoomWrap');
+      const zoomSlider = document.getElementById('scannerZoomSlider');
+      const zoomValue = document.getElementById('scannerZoomValue');
+
+      // Hide optional hardware controls until feature-detected
+      if (torchBtn) torchBtn.classList.add('hidden');
+      if (camSelect) camSelect.classList.add('hidden');
+      if (switchCamBtn) switchCamBtn.classList.add('hidden');
+      if (zoomWrap) {
+        zoomWrap.classList.add('hidden');
+        zoomWrap.classList.remove('flex');
+      }
 
       if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
         video.classList.add('hidden');
@@ -3246,7 +3101,7 @@ const authService = new MultiUserAuthAndRlsEngine();
       } catch (e) {}
       statusPill.textContent = getT().scannerAlignPrompt;
 
-      // Enumerate and sort rear cameras first
+      // Enumerate and sort rear cameras first; only display camera selector/switcher when 2+ cameras exist
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const cams = devices.filter((d) => d.kind === 'videoinput');
@@ -3255,7 +3110,8 @@ const authService = new MultiUserAuthAndRlsEngine();
           const bBack = (b.label || '').toLowerCase().includes('back') || (b.label || '').toLowerCase().includes('rear');
           return (bBack ? 1 : 0) - (aBack ? 1 : 0);
         });
-        if (cams.length > 0) {
+        availableCameras = cams;
+        if (cams.length > 1) {
           camSelect.innerHTML = '';
           cams.forEach((c, idx) => {
             const opt = document.createElement('option');
@@ -3266,16 +3122,37 @@ const authService = new MultiUserAuthAndRlsEngine();
           const activeTrack = activeStream.getVideoTracks()[0];
           const curId = activeTrack && activeTrack.getSettings ? activeTrack.getSettings().deviceId : '';
           if (curId) camSelect.value = curId;
+          camSelect.classList.remove('hidden');
+          switchCamBtn.classList.remove('hidden');
         }
       } catch (e) {}
 
-      // Apply continuous autofocus/exposure & check torch capability
+      // Apply continuous autofocus/exposure & detect hardware Torch and Zoom capabilities
       const track = activeStream.getVideoTracks()[0];
-      let hasTorch = false;
       if (track && typeof track.getCapabilities === 'function') {
         try {
           const caps = track.getCapabilities();
-          hasTorch = Boolean(caps && caps.torch);
+          const settings = typeof track.getSettings === 'function' ? track.getSettings() : {};
+
+          if (caps && caps.torch) {
+            torchBtn.classList.remove('hidden');
+            torchBtn.textContent = getT().flashlightOff;
+          }
+
+          if (caps && caps.zoom && typeof caps.zoom === 'object' && caps.zoom.max > caps.zoom.min) {
+            const minZ = typeof caps.zoom.min === 'number' ? caps.zoom.min : 1;
+            const maxZ = Math.min(typeof caps.zoom.max === 'number' ? caps.zoom.max : 3, 5);
+            const stepZ = typeof caps.zoom.step === 'number' && caps.zoom.step > 0 ? caps.zoom.step : 0.1;
+            const curZ = typeof settings.zoom === 'number' ? settings.zoom : minZ;
+            zoomSlider.min = String(minZ);
+            zoomSlider.max = String(maxZ);
+            zoomSlider.step = String(stepZ);
+            zoomSlider.value = String(curZ);
+            zoomValue.textContent = Number(curZ).toFixed(1) + 'x';
+            zoomWrap.classList.remove('hidden');
+            zoomWrap.classList.add('flex');
+          }
+
           const adv = {};
           if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) adv.focusMode = 'continuous';
           if (Array.isArray(caps.exposureMode) && caps.exposureMode.includes('continuous')) adv.exposureMode = 'continuous';
@@ -3283,15 +3160,6 @@ const authService = new MultiUserAuthAndRlsEngine();
             track.applyConstraints({ advanced: [adv] }).catch(() => {});
           }
         } catch (e) {}
-      }
-      if (hasTorch) {
-        torchBtn.disabled = false;
-        torchBtn.className = 'rounded-xl border border-slate-700 bg-slate-800 px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-200 hover:border-sky-400';
-        torchBtn.textContent = getT().flashlightOff;
-      } else {
-        torchBtn.disabled = true;
-        torchBtn.className = 'rounded-xl border border-slate-800 bg-slate-900/60 px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-not-allowed';
-        torchBtn.textContent = getT().flashlightNA;
       }
 
       // Use requestVideoFrameCallback when available with 85ms adaptive sampling and non-overlapping lock
@@ -3344,16 +3212,10 @@ const authService = new MultiUserAuthAndRlsEngine();
     // WIRE ALL EVENT LISTENERS ON DOM READY
     // =========================================================================
     window.addEventListener('DOMContentLoaded', () => {
-      loadStoredState();
-      if (scanHistory.length > 0) {
-        currentResult = scanHistory[0].result;
-        currentSourceLabel = 'Recent History';
-      } else {
-        currentResult = null;
-        currentSourceLabel = '';
-      }
+      loadStoredSettings();
       applySettingsToUI();
       navigateTo('home');
+      void initIndexedDBHistory();
 
       document.querySelectorAll('[data-lang-switch]').forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -3373,84 +3235,12 @@ const authService = new MultiUserAuthAndRlsEngine();
       document.getElementById('homeCardScanBtn').addEventListener('click', () => navigateTo('scanner'));
       document.getElementById('homeViewAllHistoryBtn').addEventListener('click', () => navigateTo('history'));
 
-      // Account page tabs & handlers
-      document.querySelectorAll('.auth-tab-btn').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          activeAuthTab = btn.getAttribute('data-auth-tab') || 'login';
-          document.querySelectorAll('.auth-tab-btn').forEach((b) => {
-            if (b.getAttribute('data-auth-tab') === activeAuthTab) {
-              b.className = 'auth-tab-btn zip-gradient-btn rounded-xl px-4 py-2 text-xs font-bold text-white transition';
-            } else {
-              b.className = 'auth-tab-btn rounded-xl bg-slate-800/80 px-4 py-2 text-xs font-bold text-slate-300 hover:text-white transition';
-            }
-          });
-          document.getElementById('accountErrorBanner').classList.add('hidden');
-          void renderAccountPage();
+      const multiCloseBtn = document.getElementById('multiQrCloseBtn');
+      if (multiCloseBtn) {
+        multiCloseBtn.addEventListener('click', () => {
+          document.getElementById('multiQrModal').classList.add('hidden');
         });
-      });
-
-      document.getElementById('accountSubmitAuthBtn').addEventListener('click', async () => {
-        const emailEl = document.getElementById('accountEmailInput');
-        const passEl = document.getElementById('accountPasswordInput');
-        const errBanner = document.getElementById('accountErrorBanner');
-        errBanner.classList.add('hidden');
-        try {
-          if (activeAuthTab === 'login') {
-            await authService.login(emailEl.value, passEl.value);
-            passEl.value = '';
-            showToast(getT().toastSignedIn);
-          } else if (activeAuthTab === 'register') {
-            await authService.register(emailEl.value, passEl.value);
-            passEl.value = '';
-            showToast(getT().toastRegistered);
-          } else {
-            await authService.requestPasswordReset(emailEl.value);
-            showToast(getT().toastResetSent);
-          }
-          void renderAccountPage();
-        } catch (err) {
-          errBanner.textContent = err && err.message ? err.message : 'Authentication error';
-          errBanner.classList.remove('hidden');
-        }
-      });
-
-      document.getElementById('accountSyncSsidCheckbox').addEventListener('change', async (e) => {
-        const s = authService.getCurrentSession();
-        if (s) {
-          await authService.upsertUserSettings({ syncSsidOptIn: e.target.checked }, s.accessToken);
-        }
-      });
-
-      document.getElementById('accountSignOutBtn').addEventListener('click', () => {
-        document.getElementById('accountSignOutConfirmBox').classList.remove('hidden');
-      });
-      document.getElementById('accountCancelSignOutBtn').addEventListener('click', () => {
-        document.getElementById('accountSignOutConfirmBox').classList.add('hidden');
-      });
-      document.getElementById('accountConfirmSignOutBtn').addEventListener('click', async () => {
-        await authService.logout();
-        currentResult = null;
-        document.getElementById('accountSignOutConfirmBox').classList.add('hidden');
-        void renderAccountPage();
-        showToast(getT().toastSignedOut);
-      });
-
-      document.getElementById('accountDeleteBtn').addEventListener('click', () => {
-        document.getElementById('accountDeleteConfirmBox').classList.remove('hidden');
-      });
-      document.getElementById('accountCancelDeleteBtn').addEventListener('click', () => {
-        document.getElementById('accountDeleteConfirmBox').classList.add('hidden');
-      });
-      document.getElementById('accountConfirmDeleteBtn').addEventListener('click', async () => {
-        const s = authService.getCurrentSession();
-        if (s) {
-          await authService.deleteOwnAccount(s.accessToken);
-        }
-        currentResult = null;
-        document.getElementById('accountDeleteConfirmBox').classList.add('hidden');
-        void renderAccountPage();
-        showToast(getT().toastAccountDeleted);
-      });
+      }
 
       // Home Paste QR Content action
       const triggerHomePasteDecode = () => {
@@ -3482,8 +3272,8 @@ const authService = new MultiUserAuthAndRlsEngine();
         const file = e.target.files && e.target.files[0];
         if (!file) return;
         try {
-          const payload = await decodeQRFromFile(file);
-          handleDecodedQR(payload, 'Uploaded Image (' + file.name + ')');
+          const payloads = await decodeAllQRCodesFromFile(file);
+          handleUploadedPayloads(payloads, 'Uploaded Image (' + file.name + ')');
         } catch (err) {
           showToast(getT().toastDecodeError);
         } finally {
@@ -3505,8 +3295,8 @@ const authService = new MultiUserAuthAndRlsEngine();
         const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
         if (!file) return;
         try {
-          const payload = await decodeQRFromFile(file);
-          handleDecodedQR(payload, 'Dropped Image (' + file.name + ')');
+          const payloads = await decodeAllQRCodesFromFile(file);
+          handleUploadedPayloads(payloads, 'Dropped Image (' + file.name + ')');
         } catch (err) {
           showToast(getT().toastDecodeError);
         }
@@ -3520,6 +3310,18 @@ const authService = new MultiUserAuthAndRlsEngine();
         saveSettingsState();
         startLiveCameraScanner(e.target.value);
       });
+      document.getElementById('scannerSwitchCameraBtn').addEventListener('click', () => {
+        if (availableCameras.length < 2) return;
+        const selectEl = document.getElementById('cameraDeviceSelect');
+        const curIdx = availableCameras.findIndex((c) => c.deviceId === selectEl.value);
+        const nextCam = availableCameras[(curIdx + 1) % availableCameras.length];
+        if (nextCam) {
+          selectEl.value = nextCam.deviceId;
+          appSettings.preferredCameraId = nextCam.deviceId;
+          saveSettingsState();
+          startLiveCameraScanner(nextCam.deviceId);
+        }
+      });
       document.getElementById('scannerTorchBtn').addEventListener('click', async () => {
         if (!activeStream) return;
         const track = activeStream.getVideoTracks()[0];
@@ -3531,6 +3333,16 @@ const authService = new MultiUserAuthAndRlsEngine();
         } catch (e) {
           showToast(getT().toastTorchUnsupported);
         }
+      });
+      document.getElementById('scannerZoomSlider').addEventListener('input', async (e) => {
+        const z = Number(e.target.value);
+        document.getElementById('scannerZoomValue').textContent = z.toFixed(1) + 'x';
+        if (!activeStream) return;
+        const track = activeStream.getVideoTracks()[0];
+        if (!track) return;
+        try {
+          await track.applyConstraints({ advanced: [{ zoom: z }] });
+        } catch (err) {}
       });
 
       document.getElementById('resultsEmptyScanBtn').addEventListener('click', () => navigateTo('scanner'));
@@ -3597,7 +3409,9 @@ const authService = new MultiUserAuthAndRlsEngine();
       });
       document.getElementById('historyConfirmClearBtn').addEventListener('click', () => {
         scanHistory = [];
-        saveHistoryState();
+        revealedHistoryPasswords.clear();
+        void idbClearAllRecords();
+        renderHistoryViews();
         document.getElementById('historyClearModal').classList.add('hidden');
         showToast(getT().toastHistoryCleared);
       });
@@ -3626,6 +3440,8 @@ const authService = new MultiUserAuthAndRlsEngine();
       document.getElementById('settingsConfirmWipeBtn').addEventListener('click', () => {
         const preservedLang = appSettings.language || 'ckb';
         scanHistory = [];
+        revealedHistoryPasswords.clear();
+        void idbClearAllRecords();
         appSettings = {
           language: preservedLang,
           historyEnabled: true,
@@ -3634,7 +3450,7 @@ const authService = new MultiUserAuthAndRlsEngine();
           preferredCameraId: ''
         };
         try {
-          localStorage.removeItem(STORAGE_KEYS.HISTORY);
+          localStorage.removeItem(STORAGE_KEYS.LEGACY_HISTORY);
           localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(appSettings));
           localStorage.setItem(STORAGE_KEYS.LANGUAGE, preservedLang);
         } catch (e) {}
@@ -3644,4 +3460,3 @@ const authService = new MultiUserAuthAndRlsEngine();
         showToast(getT().toastDataWiped);
       });
     });
-

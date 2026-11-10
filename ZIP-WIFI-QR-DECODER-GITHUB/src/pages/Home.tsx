@@ -8,7 +8,9 @@ interface HomeProps {
   language?: SupportedLanguage;
   onNavigate: (page: ActivePage) => void;
   onDecodedPayload: (rawPayload: string, sourceLabel?: string) => void;
+  onMultipleDecodedPayloads?: (payloads: string[], sourceLabel?: string) => void;
   onSelectHistoryResult: (result: ParsedQRResult) => void;
+  onNotify?: (message: string, type?: 'success' | 'info' | 'error') => void;
   recentHistory: ScanHistoryEntry[];
   onError: (message: string) => void;
 }
@@ -17,7 +19,9 @@ export const Home: React.FC<HomeProps> = ({
   language = 'ckb',
   onNavigate,
   onDecodedPayload,
+  onMultipleDecodedPayloads,
   onSelectHistoryResult,
+  onNotify,
   recentHistory,
   onError,
 }) => {
@@ -70,6 +74,7 @@ export const Home: React.FC<HomeProps> = ({
               language={language}
               label={t.btnUploadQrImage}
               onDecodedPayload={onDecodedPayload}
+              onMultipleDecodedPayloads={onMultipleDecodedPayloads}
               onError={onError}
             />
           </div>
@@ -110,6 +115,7 @@ export const Home: React.FC<HomeProps> = ({
             language={language}
             label={t.card2Btn}
             onDecodedPayload={onDecodedPayload}
+            onMultipleDecodedPayloads={onMultipleDecodedPayloads}
             onError={onError}
           />
         </section>
@@ -172,6 +178,7 @@ export const Home: React.FC<HomeProps> = ({
                 result={entry.result}
                 language={language}
                 onSelect={onSelectHistoryResult}
+                onNotify={onNotify}
                 compact
               />
             ))}
