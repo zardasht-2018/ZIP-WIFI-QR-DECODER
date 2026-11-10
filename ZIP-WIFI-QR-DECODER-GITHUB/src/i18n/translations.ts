@@ -21,6 +21,16 @@ export interface TranslationDictionary {
   langKurdish: string;
   langEnglish: string;
 
+  // Online / Offline / Cache Readiness Indicators
+  statusOnline: string;
+  statusOffline: string;
+  statusOfflineReady: string;
+  statusCachingProgress: string;
+  statusOfflineIncomplete: string;
+  statusOnlineAndReady: string;
+  statusOfflineAndReady: string;
+  statusOfflineUnavailable: string;
+
   // Home Page
   heroBadge: string;
   heroDescription: string;
@@ -123,7 +133,7 @@ export interface TranslationDictionary {
   badgeSavedPassword: string;
   historyPasswordExtractedPrefix: string;
 
-  // Settings & About Page
+  // Settings & System Information / Offline PWA Section
   settingsTitle: string;
   settingsSubtitle: string;
   settingsLanguageHeading: string;
@@ -140,6 +150,34 @@ export interface TranslationDictionary {
   historyPrefsHeading: string;
   enableHistoryTitle: string;
   enableHistoryDesc: string;
+
+  // Dedicated Settings Section: Application Information, PWA & Offline Capabilities
+  sysInfoSectionHeading: string;
+  sysInfoReadinessLabel: string;
+  sysInfoPwaTitle: string;
+  sysInfoPwaDesc: string;
+  sysInfoOfflineTitle: string;
+  sysInfoOfflineDesc: string;
+  sysInfoFeaturesHeading: string;
+  sysInfoFeat1: string;
+  sysInfoFeat2: string;
+  sysInfoFeat3: string;
+  sysInfoFeat4: string;
+  sysInfoFeat5: string;
+  sysInfoFeat6: string;
+  sysInfoFeat7: string;
+  sysInfoFeat8: string;
+  sysInfoConditionsHeading: string;
+  sysInfoCond1: string;
+  sysInfoCond2: string;
+  sysInfoCond3: string;
+  sysInfoCond4: string;
+  pwaInstallHeading: string;
+  pwaInstallDesc: string;
+  btnInstallPwa: string;
+  pwaInstalledBadge: string;
+  pwaManualInstallHint: string;
+
   privacyHeading: string;
   privacyCard1Title: string;
   privacyCard1Desc: string;
@@ -186,6 +224,7 @@ export interface TranslationDictionary {
   toastDecodeError: string;
   toastTorchUnsupported: string;
   toastMultipleQrFound: string;
+  toastOfflineReadyConfirmed: string;
 }
 
 export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
@@ -202,8 +241,18 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     langKurdish: 'کوردی',
     langEnglish: 'English',
 
+    // Online / Offline / Cache Readiness Indicators
+    statusOnline: 'سەرهێڵ: پەیوەستە',
+    statusOffline: 'دۆخی بێ ئینتەرنێت (Offline Mode)',
+    statusOfflineReady: 'ئامادەیە بۆ کارکردن بەبێ ئینتەرنێت',
+    statusCachingProgress: 'خەریکی پاشەکەوتکردنی فایلە پێویستەکانە...',
+    statusOfflineIncomplete: 'ئامادەکاری کارکردنی بێ ئینتەرنێت تەواو نەبووە',
+    statusOnlineAndReady: 'سەرهێڵ و ئامادەیە بۆ کارکردن بەبێ ئینتەرنێت',
+    statusOfflineAndReady: 'دۆخی بێ ئینتەرنێت — ئامادەیە (کارکردن لە بیرگەی ناوخۆیی)',
+    statusOfflineUnavailable: 'تایبەتمەندی Offline لەم ژینگەیەدا بەردەست نییە',
+
     // Home Page
-    heroBadge: '١٠٠٪ شیکردنەوەی ناوخۆیی لەناو وێبگەڕ • بێ هەژمار و بێ سێرڤەر',
+    heroBadge: '١٠٠٪ شیکردنەوەی ناوخۆیی لەناو وێبگەڕ • کاردەکات بەبێ ئینتەرنێت (Offline PWA)',
     heroDescription:
       'هەر کۆدێکی QRـی وای-فای بە کامێرا سکان بکە یان وێنەی QR باربکە (PNG، JPG، JPEG، WEBP) بۆ دەرهێنان و پیشاندانی دەستبەجێی تێپەڕەوشەی وای-فای، ناوی تۆڕ (SSID)، جۆری پاراستن (WPA، WPA2، WPA3، WEP، کراوە، DPP)، و پاشەکەوتکردنی تەواوی مێژوو لەسەر ئامێرەکەت.',
     btnScanQrCode: 'سکانکردنی کۆدی QR',
@@ -318,10 +367,10 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     badgeSavedPassword: 'تێپەڕەوشە پاشەکەوتکراوە',
     historyPasswordExtractedPrefix: 'تێپەڕەوشە پاشەکەوتکراوە',
 
-    // Settings & About Page
-    settingsTitle: 'ڕێکخستنەکان و تایبەتمەندی',
+    // Settings & System Information / Offline PWA Section
+    settingsTitle: 'ڕێکخستنەکان، تایبەتمەندی و زانیاری سیستەم',
     settingsSubtitle:
-      'گۆڕینی زمان، ڕووکاری ڕەنگەکان، شاردنەوەی تێپەڕەوشە، و کۆنترۆڵکردنی تایبەتمەندی داتای ناوخۆیی.',
+      'گۆڕینی زمان، ڕووکاری ڕەنگەکان، کۆنترۆڵکردنی تایبەتمەندی داتای ناوخۆیی، و زانیاری کارکردنی بێ ئینتەرنێت (PWA).',
     settingsLanguageHeading: 'زمان / Language',
     settingsLanguageDesc: 'زمانی پیشاندانی بەرنامەکە هەڵبژێرە (بە شێوەی خودکارانە پاشەکەوت دەکرێت).',
     settingsThemeHeading: 'ڕێکخستنی ڕووکار (Theme)',
@@ -338,6 +387,42 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     enableHistoryTitle: 'چالاککردنی مێژووی هەمیشەیی ناوخۆیی (لەگەڵ تێپەڕەوشەکان)',
     enableHistoryDesc:
       'پاشەکەوتکردنی خودکارانەی تۆڕە سکانکراوەکان و تێپەڕەوشەی ڕاستەقینەی وای-فای لە بنکەدراوەی IndexedDBـی وێبگەڕەکەت تا دوای داخستنی وێبگەڕ یان کوژاندنەوەی ئامێرەکەش بمێننەوە.',
+
+    // Dedicated Settings Section: Application Information, PWA & Offline Capabilities
+    sysInfoSectionHeading: 'زانیاری بەرنامە و توانای کارکردن بەبێ ئینتەرنێت (PWA)',
+    sysInfoReadinessLabel: 'دۆخی ئامادەیی کارکردنی بێ ئینتەرنێت:',
+    sysInfoPwaTitle: 'دەربارەی ZIP QR',
+    sysInfoPwaDesc:
+      'ZIP QR بەرنامەیەکی وێبی پێشکەوتووە (Progressive Web App - PWA) کە دەتوانیت لە وێبگەڕە پشتگیریکراوەکان بەکاریبهێنیت و لە ئامێرە پشتگیریکراوەکان وەک ئەپێک دایمەزرێنیت.',
+    sysInfoOfflineTitle: 'کارکردن بەبێ ئینتەرنێت',
+    sysInfoOfflineDesc:
+      'ZIP QR دەتوانێت دوای یەکەم جار کردنەوەی سەرکەوتووی بەرنامەکە بە ئینتەرنێت و تەواوبوونی پاشەکەوتکردنی فایلە پێویستەکان، بەبێ پەیوەندی بە ئینتەرنێتیش کار بکات.',
+    sysInfoFeaturesHeading: 'لە دوای ئامادەبوونی Offline Mode، دەتوانیت:',
+    sysInfoFeat1: 'QR Code بە کامێرا بسکەنیت.',
+    sysInfoFeat2: 'وێنەی QR Upload بکەیت و بخوێنیتەوە.',
+    sysInfoFeat3: 'زانیارییەکانی Wi-Fi و پاسوۆردەکە بدۆزیتەوە.',
+    sysInfoFeat4: 'مێژووی Scan ـەکانت ببینیت.',
+    sysInfoFeat5: 'پاسوۆردە پاشەکەوتکراوەکانت ببینیت و کۆپی بکەیت.',
+    sysInfoFeat6: 'تۆماری نوێی سکان لە بنکەدراوەی ناوخۆیی پاشەکەوت بکەیت.',
+    sysInfoFeat7: 'زمان بگۆڕیت لە نێوان کوردی سۆرانی و ئینگلیزی.',
+    sysInfoFeat8: 'Settings و زانیارییەکانی بەرنامەکە بەکاربهێنیت.',
+    sysInfoConditionsHeading: 'تێبینی گرنگ:',
+    sysInfoCond1:
+      'بۆ یەکەم جار باربوونی بەرنامەکە، دامەزراندن، و وەرگرتنی نوێکارییەکان پێویستت بە ئینتەرنێت هەیە.',
+    sysInfoCond2:
+      'سکەنکردن بە کامێرا پێویستی بە HTTPS، ڕێگەپێدانی کامێرا و وێبگەڕێکی پشتگیریکار هەیە.',
+    sysInfoCond3:
+      'سڕینەوەی داتای وێبگەڕ یان Site Data ڕەنگە مێژوو و فایلە پاشەکەوتکراوەکان بسڕێتەوە، و سیاسەتی بیرگەی وێبگەڕ کار دەکاتە سەر مانەوەی داتا.',
+    sysInfoCond4:
+      'کارکردنی بێ ئینتەرنێت ناتوانێت تێپەڕەوشەیەک بگەڕێنێتەوە کە هەرگیز لەناو کۆدی QRـەکەدا تۆمار نەکرابێت.',
+    pwaInstallHeading: 'دامەزراندنی بەرنامەی ZIP QR لەسەر ئامێرەکەت',
+    pwaInstallDesc:
+      'دەتوانیت ZIP QR لەسەر مۆبایل یان کۆمپیوتەرەکەت دابمەزرێنیت بۆ ئەزموونێکی وەک ئەپی سەربەخۆ. بەردەستبوونی دامەزراندن بەندە بە وێبگەڕ و سیستەمی کارپێکردنی ئامێرەکەت.',
+    btnInstallPwa: 'دامەزراندنی ئەپی ZIP QR',
+    pwaInstalledBadge: 'ئەپەکە دامەزراوە (کارکردن وەک ئەپی سەربەخۆ)',
+    pwaManualInstallHint:
+      'بۆ دامەزراندن: لە مێنوی وێبگەڕەکەت هەڵبژاردنی "Add to Home Screen" (لە iPhone/Android) یان ئایکۆنی "Install ZIP QR" لە شریتی ناونیشانی وێبگەڕەکەت بەکاربهێنە.',
+
     privacyHeading: 'زانیاری تایبەتمەندی و ڕاستگۆیی تەکنیکی',
     privacyCard1Title: '١٠٠٪ کارکردن لەسەر ئامێری بەکارهێنەر (بێ سێرڤەر)',
     privacyCard1Desc:
@@ -353,7 +438,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     btnConfirmWipe: 'تەواو، هەمووی بسڕەوە',
 
     // About & Developer Identity Section
-    aboutHeading: 'دەربارەی ZIP QR — Wi-Fi QR Decoder',
+    aboutHeading: 'دەربارەی گەشەپێدەر و پڕۆژەی ZIP QR',
     aboutDescription:
       'ZIP QR — Wi-Fi QR Decoder (وەشانی PWA) — SCAN. REVEAL. CONNECT. دیزاین کراوە بۆ ئایفۆن، ئایپاد، مۆبایل و تابلێتەکانی ئەندرۆید، ویندۆز، ماکبووک، و کۆمپیوتەرەکانی لینوکس. پشتگیری لە تۆڕەکانی WPA، WPA2، WPA3-SAE، WPA2-EAP، WEP، تۆڕە کراوەکان (nopass)، تۆڕە شاراوەکان، هێما تایبەتەکان (\\; \\, \\: \\\\ \\")، و کۆدەکانی Wi-Fi Easy Connect (DPP:) دەکات.',
     creatorSectionBadge: 'زانیاری گەشەپێدەر و دروستکەر',
@@ -369,7 +454,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
 
     // Footer & Notifications
     footerLeft: 'ZIP QR — Wi-Fi QR Decoder • SCAN. REVEAL. CONNECT.',
-    footerRight: '١٠٠٪ شیکردنەوەی ناوخۆیی کۆدی QR لەناو وێبگەڕ • بێ هەژمار و بێ ناردن بۆ سێرڤەر',
+    footerRight: '١٠٠٪ شیکردنەوەی ناوخۆیی کۆدی QR لەناو وێبگەڕ • کاردەکات بەبێ ئینتەرنێت (Offline PWA)',
     toastPasswordExtracted: 'تێپەڕەوشە دەرهێنرا و لە مێژوو پاشەکەوت کرا بۆ',
     toastDecodedPayload: 'کۆدی QR بە سەرکەوتوویی شیکرایەوە',
     toastPasswordCopied: 'تێپەڕەوشەی وای-فای لەبەرگیرایەوە!',
@@ -388,6 +473,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     toastDecodeError: 'هیچ کۆدێکی دروستی QR لەم وێنەیەدا نەدۆزرایەوە.',
     toastTorchUnsupported: 'کۆنترۆڵکردنی فلاش لەسەر ئەم کامێرایە پشتگیری ناکرێت.',
     toastMultipleQrFound: 'چەند کۆدێکی QR لە وێنەکەدا دۆزرایەوە — دانەیەکیان هەڵبژێرە.',
+    toastOfflineReadyConfirmed: 'هەموو فایلە پێویستەکان پاشەکەوت کران — ئامادەیە بۆ کارکردن بەبێ ئینتەرنێت.',
   },
 
   en: {
@@ -403,8 +489,18 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     langKurdish: 'کوردی',
     langEnglish: 'English',
 
+    // Online / Offline / Cache Readiness Indicators
+    statusOnline: 'Online: Connected',
+    statusOffline: 'Offline: Offline Mode',
+    statusOfflineReady: 'Ready for Offline Use',
+    statusCachingProgress: 'Essential resources still caching...',
+    statusOfflineIncomplete: 'Offline preparation incomplete',
+    statusOnlineAndReady: 'Online and ready for offline use',
+    statusOfflineAndReady: 'Offline and ready (running from local cache)',
+    statusOfflineUnavailable: 'Offline capability unavailable in this browser context',
+
     // Home Page
-    heroBadge: '100% Local In-Browser Decoding • No Login • Zero Server Uploads',
+    heroBadge: '100% Local In-Browser Decoding • Full Offline PWA Support',
     heroDescription:
       'Scan any Wi-Fi QR code with your camera or upload a QR image (PNG, JPG, JPEG, WEBP) to immediately extract and reveal the exact encoded Wi-Fi Password, SSID, Security Type (WPA, WPA2, WPA3, WEP, Open, DPP), and keep persistent local History on your device.',
     btnScanQrCode: 'SCAN QR CODE',
@@ -520,10 +616,10 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     badgeSavedPassword: 'Saved Password',
     historyPasswordExtractedPrefix: 'Saved password',
 
-    // Settings & About Page
-    settingsTitle: 'Settings & Privacy',
+    // Settings & System Information / Offline PWA Section
+    settingsTitle: 'Settings, Privacy & System Information',
     settingsSubtitle:
-      'Customize language, theme accents, password masking defaults, and local storage privacy controls.',
+      'Customize language, theme accents, local IndexedDB storage controls, and inspect PWA & offline capabilities.',
     settingsLanguageHeading: 'Language / زمان',
     settingsLanguageDesc: 'Select the application interface language (saved automatically).',
     settingsThemeHeading: 'Theme Settings',
@@ -540,6 +636,42 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     enableHistoryTitle: 'Enable Persistent Local History (Including Wi-Fi Passwords)',
     enableHistoryDesc:
       'Automatically save scanned networks and actual Wi-Fi passwords in your browser IndexedDB database so they remain available after closing the browser or restarting your device.',
+
+    // Dedicated Settings Section: Application Information, PWA & Offline Capabilities
+    sysInfoSectionHeading: 'Application Information & Offline Capabilities (PWA)',
+    sysInfoReadinessLabel: 'Current Offline Readiness Status:',
+    sysInfoPwaTitle: 'About ZIP QR',
+    sysInfoPwaDesc:
+      'ZIP QR is a Progressive Web App (PWA). You can use it through a supported web browser and install it on supported devices for an app-like experience.',
+    sysInfoOfflineTitle: 'Offline Functionality',
+    sysInfoOfflineDesc:
+      'ZIP QR can work without an internet connection after your first successful online visit and once all essential application files have been successfully cached.',
+    sysInfoFeaturesHeading: 'When offline readiness is complete, you can:',
+    sysInfoFeat1: 'Scan QR codes using your camera.',
+    sysInfoFeat2: 'Upload and decode QR images.',
+    sysInfoFeat3: 'Extract encoded Wi-Fi information and passwords.',
+    sysInfoFeat4: 'View your local scan History.',
+    sysInfoFeat5: 'Reveal and copy previously saved Wi-Fi passwords.',
+    sysInfoFeat6: 'Save new scans locally in IndexedDB.',
+    sysInfoFeat7: 'Switch between supported languages (Kurdish Sorani & English).',
+    sysInfoFeat8: 'Access application settings and local information.',
+    sysInfoConditionsHeading: 'Important Conditions & Limitations:',
+    sysInfoCond1:
+      'The first successful visit, initial caching, and application updates require an internet connection.',
+    sysInfoCond2:
+      'Live camera scanning requires HTTPS, camera permission, and a supported browser.',
+    sysInfoCond3:
+      'Clearing browser or site data may remove saved History and cached application files, and browser storage policies may affect persistent data.',
+    sysInfoCond4:
+      'Offline functionality cannot recover information that was never encoded inside a QR code (such as DPP public-key codes).',
+    pwaInstallHeading: 'Install ZIP QR on Your Device',
+    pwaInstallDesc:
+      'Install ZIP QR on your device for a more app-like experience. Installation availability depends on your browser and operating system.',
+    btnInstallPwa: 'Install ZIP QR App',
+    pwaInstalledBadge: 'Installed (Running in Standalone App Mode)',
+    pwaManualInstallHint:
+      'To install: Open your browser menu and select "Add to Home Screen" (iOS/Android) or click the "Install ZIP QR" icon in the address bar (Desktop Chrome/Edge).',
+
     privacyHeading: 'Privacy Architecture & Technical Transparency',
     privacyCard1Title: '100% Client-Side Execution (Zero Server Uploads)',
     privacyCard1Desc:
@@ -555,7 +687,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     btnConfirmWipe: 'Confirm Wipe',
 
     // About & Developer Identity Section
-    aboutHeading: 'About ZIP QR — Wi-Fi QR Decoder',
+    aboutHeading: 'Developer & Creator Profile',
     aboutDescription:
       'ZIP QR — Wi-Fi QR Decoder (PWA) — SCAN. REVEAL. CONNECT. Designed for iPhones, iPads, Android phones & tablets, Windows, MacBooks, and Linux computers. Supports WPA, WPA2, WPA3-SAE, WPA2-EAP, WEP, Open (nopass), hidden networks, escaped special characters (\\; \\, \\: \\\\ \\"), and Wi-Fi Easy Connect (DPP:).',
     creatorSectionBadge: 'Developer & Creator Identity',
@@ -571,7 +703,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
 
     // Footer & Notifications
     footerLeft: 'ZIP QR — Wi-Fi QR Decoder • SCAN. REVEAL. CONNECT.',
-    footerRight: '100% Local In-Browser QR Decoding • No Accounts • Zero Cloud Uploads',
+    footerRight: '100% Local In-Browser QR Decoding • Full Offline PWA Support',
     toastPasswordExtracted: 'Password extracted and saved locally for',
     toastDecodedPayload: 'Decoded QR code',
     toastPasswordCopied: 'Wi-Fi Password copied to clipboard!',
@@ -590,5 +722,6 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
     toastDecodeError: 'Could not decode a valid QR code from this image.',
     toastTorchUnsupported: 'Flashlight control not supported on this camera.',
     toastMultipleQrFound: 'Multiple QR codes detected in image — select one below.',
+    toastOfflineReadyConfirmed: 'All essential app files cached — ready for offline use!',
   },
 };

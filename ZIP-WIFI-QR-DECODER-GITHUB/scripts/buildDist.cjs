@@ -1,17 +1,16 @@
 /**
- * ZIP QR — Wi-Fi QR Decoder — Self-Contained Production Distribution Builder
+ * ZIP QR — Wi-Fi QR Decoder — Self-Contained Offline-Ready Production Distribution Builder
  *
  * Implements:
- * 1. Content-Fingerprinted Immutable Bundles:
+ * 1. 100% Local Self-Contained Bundles (Zero External CDN Dependencies):
  *    - Generates `/assets/index.<cssHash>.css` and `/assets/index.<jsHash>.js` derived from SHA-256 content hashes.
  *    - Keeps `/assets/index.css` and `/assets/index.js` aliases for backward compatibility.
+ *    - Emits zero external script or stylesheet tags so the PWA works 100% offline after initial caching.
  * 2. Automatic Service Worker Cache Versioning (`dist/sw.js`):
  *    - Injects a unique deterministic `BUILD_VERSION` (`v2.5.0-<contentHash>`) and the exact
  *      hashed asset paths into `dist/sw.js` on every build so every deployment produces a
  *      byte-different `sw.js` and rotates the cache (`zip-qr-cache-v2.5.0-<hash>`).
- * 3. Update-Aware Service Worker Registration (`updateViaCache: 'none'`):
- *    - Ensures browsers always revalidate `/sw.js`, detect new deployments, activate via
- *      `SKIP_WAITING` + `clients.claim()`, clean up obsolete caches, and reload cleanly at most once.
+ * 3. Update-Aware & Offline-Verified Service Worker Registration (`updateViaCache: 'none'`).
  * 4. Generates `dist/version.json` with build metadata.
  */
 
@@ -59,7 +58,7 @@ let jsContent = fs.readFileSync(path.join(templatesDir, 'runtime.js'), 'utf8');
 // Append update-aware Service Worker registration (`updateViaCache: 'none'`, `SKIP_WAITING`, single-reload guard)
 const swRegistrationSnippet = `
 // =========================================================================
-// PWA SERVICE WORKER REGISTRATION & UPDATE LIFECYCLE MANAGER
+// PWA SERVICE WORKER REGISTRATION, OFFLINE READINESS & UPDATE LIFECYCLE
 // =========================================================================
 (function initZipQrServiceWorker() {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return;
@@ -73,7 +72,18 @@ const swRegistrationSnippet = `
   var RELOAD_GUARD_KEY = 'zip_qr_sw_reload_guard_v1';
   var isRefreshing = false;
 
+  navigator.serviceWorker.addEventListener('message', function (event) {
+    if (event.data && event.data.type === 'OFFLINE_READY_STATUS') {
+      if (typeof window.__zipRefreshOfflineStatus === 'function') {
+        window.__zipRefreshOfflineStatus();
+      }
+    }
+  });
+
   navigator.serviceWorker.addEventListener('controllerchange', function () {
+    if (typeof window.__zipRefreshOfflineStatus === 'function') {
+      window.__zipRefreshOfflineStatus();
+    }
     if (isRefreshing) return;
     isRefreshing = true;
     try {
@@ -99,6 +109,9 @@ const swRegistrationSnippet = `
     navigator.serviceWorker
       .register('/sw.js', { scope: '/', updateViaCache: 'none' })
       .then(function (registration) {
+        if (typeof window.__zipRefreshOfflineStatus === 'function') {
+          window.__zipRefreshOfflineStatus();
+        }
         if (registration.waiting) {
           registration.waiting.postMessage({ type: 'SKIP_WAITING' });
         }
@@ -106,6 +119,9 @@ const swRegistrationSnippet = `
           var newWorker = registration.installing;
           if (!newWorker) return;
           newWorker.addEventListener('statechange', function () {
+            if (typeof window.__zipRefreshOfflineStatus === 'function') {
+              window.__zipRefreshOfflineStatus();
+            }
             if (newWorker.state === 'installed' && hadController && navigator.serviceWorker.controller) {
               newWorker.postMessage({ type: 'SKIP_WAITING' });
             }
@@ -115,6 +131,9 @@ const swRegistrationSnippet = `
         document.addEventListener('visibilitychange', function () {
           if (document.visibilityState === 'visible') {
             registration.update().catch(function () {});
+            if (typeof window.__zipRefreshOfflineStatus === 'function') {
+              window.__zipRefreshOfflineStatus();
+            }
           }
         });
         window.addEventListener('online', function () {
@@ -172,7 +191,7 @@ const versionMeta = {
 };
 fs.writeFileSync(path.join(distDir, 'version.json'), JSON.stringify(versionMeta, null, 2) + '\n', 'utf8');
 
-// 6. Write root-relative dist/index.html referencing the fingerprinted assets
+// 6. Write root-relative dist/index.html referencing ONLY local fingerprinted assets (zero external CDNs)
 const prodIndexHtml = `<!DOCTYPE html>
 <html lang="ckb" dir="rtl" data-build-version="${buildVersion}" class="dark">
 <head>
@@ -184,11 +203,6 @@ const prodIndexHtml = `<!DOCTYPE html>
   <link rel="icon" type="image/svg+xml" href="/logo/zip-logo.svg" />
   <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
   <title>ZIP QR — Wi-Fi QR Decoder</title>
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/${hashedCssFilename}" />
 </head>
 <body data-theme="electric-blue" dir="rtl" class="min-h-screen flex flex-col selection:bg-sky-500 selection:text-white">

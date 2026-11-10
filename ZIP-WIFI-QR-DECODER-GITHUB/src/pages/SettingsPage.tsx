@@ -1,11 +1,18 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppSettings } from '../types';
+import { OfflineStatusReport, verifyOfflineCacheReadiness } from '../services/swUpdateService';
 import { SupportedLanguage, TRANSLATIONS } from '../i18n/translations';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
 
 interface SettingsPageProps {
   settings: AppSettings;
   historyCount: number;
   language?: SupportedLanguage;
+  offlineStatus?: OfflineStatusReport;
   onUpdateSettings: (partial: Partial<AppSettings>) => void;
   onClearAllStoredData: () => void;
   onNotify: (message: string, type?: 'success' | 'info' | 'error') => void;
@@ -14,12 +21,58 @@ interface SettingsPageProps {
 export const SettingsPage: React.FC<SettingsPageProps> = ({
   settings,
   language = 'ckb',
+  offlineStatus,
   onUpdateSettings,
   onClearAllStoredData,
   onNotify,
 }) => {
   const t = TRANSLATIONS[language];
   const [confirmWipe, setConfirmWipe] = useState(false);
+  const [localStatus, setLocalStatus] = useState<OfflineStatusReport | null>(offlineStatus || null);
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    void verifyOfflineCacheReadiness().then(setLocalStatus);
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      setIsStandalone(window.matchMedia('(display-mode: standalone)').matches);
+    }
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredInstallPrompt(e as BeforeInstallPromptEvent);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, [offlineStatus]);
+
+  const activeStatus = offlineStatus || localStatus;
+  const readinessText = (() => {
+    if (!activeStatus) return t.statusCachingProgress;
+    switch (activeStatus.state) {
+      case 'online-ready':
+        return t.statusOnlineAndReady;
+      case 'offline-ready':
+        return t.statusOfflineAndReady;
+      case 'caching':
+        return t.statusCachingProgress;
+      case 'incomplete':
+        return t.statusOfflineIncomplete;
+      default:
+        return t.statusOfflineUnavailable;
+    }
+  })();
+
+  const readinessBadgeClass =
+    activeStatus?.cacheReady
+      ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
+      : 'border-amber-500/40 bg-amber-500/15 text-amber-300';
+
+  const handleInstallClick = async () => {
+    if (!deferredInstallPrompt) return;
+    await deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    setDeferredInstallPrompt(null);
+  };
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -67,6 +120,91 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             <div className="text-base font-bold">English</div>
             <div className="mt-1 text-xs text-slate-400">English Interface • LTR</div>
           </button>
+        </div>
+      </section>
+
+      {/* NEW DEDICATED SECTION: APPLICATION INFORMATION, PWA & OFFLINE CAPABILITIES */}
+      <section className="rounded-3xl border border-sky-500/30 bg-[#080d1a] p-6 space-y-5">
+        <div className="flex flex-col justify-between gap-3 border-b border-slate-800 pb-4 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-sky-400">
+              {t.sysInfoSectionHeading}
+            </h2>
+            <p className="mt-1 text-xs text-slate-400">{t.sysInfoReadinessLabel}</p>
+          </div>
+          <div className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-bold ${readinessBadgeClass}`}>
+            <span className={`h-2.5 w-2.5 rounded-full ${activeStatus?.cacheReady ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+            <span>{readinessText}</span>
+          </div>
+        </div>
+
+        {/* PWA Overview & Offline Functionality Cards */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-slate-800 bg-[#0b1222] p-4 space-y-2">
+            <h3 className="text-sm font-bold text-white">{t.sysInfoPwaTitle}</h3>
+            <p className="text-xs leading-relaxed text-slate-300">{t.sysInfoPwaDesc}</p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-[#0b1222] p-4 space-y-2">
+            <h3 className="text-sm font-bold text-white">{t.sysInfoOfflineTitle}</h3>
+            <p className="text-xs leading-relaxed text-slate-300">{t.sysInfoOfflineDesc}</p>
+          </div>
+        </div>
+
+        {/* 8 Offline Features Checklist */}
+        <div className="rounded-2xl border border-slate-800 bg-[#0b1222] p-4 space-y-3">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+            {t.sysInfoFeaturesHeading}
+          </h3>
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 text-xs text-slate-200">
+            <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span><span>{t.sysInfoFeat1}</span></li>
+            <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span><span>{t.sysInfoFeat2}</span></li>
+            <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span><span>{t.sysInfoFeat3}</span></li>
+            <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span><span>{t.sysInfoFeat4}</span></li>
+            <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span><span>{t.sysInfoFeat5}</span></li>
+            <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span><span>{t.sysInfoFeat6}</span></li>
+            <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span><span>{t.sysInfoFeat7}</span></li>
+            <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span><span>{t.sysInfoFeat8}</span></li>
+          </ul>
+        </div>
+
+        {/* Important Conditions & Realistic Limitations */}
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-2.5">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-amber-300">
+            {t.sysInfoConditionsHeading}
+          </h3>
+          <ul className="space-y-1.5 text-xs leading-relaxed text-slate-300">
+            <li>• {t.sysInfoCond1}</li>
+            <li>• {t.sysInfoCond2}</li>
+            <li>• {t.sysInfoCond3}</li>
+            <li>• {t.sysInfoCond4}</li>
+          </ul>
+        </div>
+
+        {/* PWA Installation Card */}
+        <div className="flex flex-col justify-between gap-4 rounded-2xl border border-sky-500/30 bg-[#0b1222] p-4 sm:flex-row sm:items-center">
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-white">{t.pwaInstallHeading}</h3>
+            <p className="text-xs text-slate-300">{t.pwaInstallDesc}</p>
+            {!isStandalone && !deferredInstallPrompt && (
+              <p className="pt-1 text-[11px] text-sky-300">{t.pwaManualInstallHint}</p>
+            )}
+          </div>
+          <div className="shrink-0">
+            {isStandalone ? (
+              <span className="inline-block rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-4 py-2 text-xs font-bold text-emerald-300">
+                {t.pwaInstalledBadge}
+              </span>
+            ) : deferredInstallPrompt ? (
+              <button
+                type="button"
+                onClick={() => void handleInstallClick()}
+                className="rounded-xl bg-gradient-to-r from-sky-500 to-purple-600 px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-sky-500/20 hover:brightness-110"
+              >
+                {t.btnInstallPwa}
+              </button>
+            ) : null}
+          </div>
         </div>
       </section>
 

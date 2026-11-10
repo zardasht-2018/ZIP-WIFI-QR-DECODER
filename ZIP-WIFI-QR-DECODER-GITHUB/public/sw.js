@@ -1,28 +1,28 @@
 /**
- * ZIP QR — Wi-Fi QR Decoder — Production PWA Service Worker
+ * ZIP QR — Wi-Fi QR Decoder — Production Offline-First & Update-Safe PWA Service Worker
  *
- * Caching & Lifecycle Strategy:
- * 1. Versioned Cache Prefix (`zip-qr-cache-`): Every production build injects a unique
- *    content-derived hash (`__BUILD_VERSION__`), ensuring every deployment triggers a
- *    byte-different `sw.js` update and clean cache rotation.
- * 2. Network-First for Navigation & App Shell (`/`, `/index.html`, `mode === 'navigate'`):
- *    Always fetches fresh HTML from the network (`cache: 'no-store'`), updates the cache
- *    with the fresh response, and falls back to cached `/index.html` ONLY when offline.
- * 3. Bypass `/sw.js`: Never intercepts or caches the Service Worker script itself.
- * 4. Network-First for `/manifest.json` & `/version.json`: Revalidates metadata while
- *    keeping an offline copy.
- * 5. Cache-First for Content-Fingerprinted Immutable Assets (`/assets/index.<hash>.js`,
- *    `/assets/index.<hash>.css`): Fast instant loading for fingerprinted bundles.
- * 6. Stale-While-Revalidate for Icons & Logos (`/icons/*`, `/logo/*`).
- * 7. Scoped Obsolete Cache Cleanup on `activate`: Deletes only old `zip-qr-cache-*` and
- *    legacy `zip-wifi-qr-decoder-*` caches without touching unrelated Cache Storage or
- *    `localStorage` scan history/preferences.
+ * Caching & Offline Readiness Strategy:
+ * 1. Verified Precache of All Essential App Assets (`APP_SHELL_ASSETS`):
+ *    - During `install`, fetches all essential application files (`/`, `/index.html`,
+ *      `/manifest.json`, `/icons/icon-192.svg`, `/icons/icon-512.svg`, `/logo/zip-logo.svg`,
+ *      and the content-fingerprinted `/assets/index.<hash>.css` & `/assets/index.<hash>.js`).
+ *    - Verifies that EVERY essential asset returned HTTP 200 OK and was stored in `CACHE_NAME`
+ *      before writing `/offline-ready.json` (`{ ready: true, version: BUILD_VERSION }`).
+ *    - Never marks an incomplete cache as offline-ready.
+ * 2. Network-First for Navigation (`/`, `/index.html`, `mode === 'navigate'`) with Guaranteed Offline Fallback:
+ *    - When online, fetches fresh HTML (`cache: 'no-store'`) and updates the cache.
+ *    - When offline, immediately serves cached `/index.html` so the PWA opens and runs without internet.
+ * 3. Cache-First for Content-Fingerprinted Immutable Bundles (`/assets/*`).
+ * 4. Scoped Obsolete Cache Cleanup on `activate`:
+ *    - Removes outdated `zip-qr-cache-*` and `zip-wifi-qr-decoder-*` caches without touching
+ *      `IndexedDB` (`zip_qr_local_db`) or saved Wi-Fi passwords.
  */
 
 const CACHE_PREFIX = 'zip-qr-cache-';
 const LEGACY_PREFIX = 'zip-wifi-qr-decoder-';
 const BUILD_VERSION = '__BUILD_VERSION__';
 const CACHE_NAME = `${CACHE_PREFIX}${BUILD_VERSION}`;
+const OFFLINE_READY_MARKER = '/offline-ready.json';
 
 const APP_SHELL_ASSETS = [
   '/',
@@ -38,20 +38,48 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) => {
-        // Fetch fresh copies bypassing HTTP browser cache during SW install
-        return Promise.all(
-          APP_SHELL_ASSETS.map((url) =>
-            fetch(new Request(url, { cache: 'reload' }))
-              .then((res) => {
-                if (res && res.ok) {
-                  return cache.put(url, res);
-                }
-                return Promise.resolve();
+      .then(async (cache) => {
+        let cachedCount = 0;
+        for (const url of APP_SHELL_ASSETS) {
+          try {
+            const res = await fetch(new Request(url, { cache: 'reload' }));
+            if (res && res.ok) {
+              await cache.put(url, res);
+              cachedCount++;
+            }
+          } catch {
+            // Asset fetch failed during install
+          }
+        }
+
+        // Only write the verified offline-ready marker if ALL essential assets were cached
+        if (cachedCount === APP_SHELL_ASSETS.length) {
+          const markerBody = JSON.stringify({
+            ready: true,
+            version: BUILD_VERSION,
+            cachedCount,
+            totalRequired: APP_SHELL_ASSETS.length,
+            timestamp: new Date().toISOString(),
+          });
+          if (typeof Response !== 'undefined') {
+            await cache.put(
+              OFFLINE_READY_MARKER,
+              new Response(markerBody, {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
               })
-              .catch(() => Promise.resolve())
-          )
-        );
+            );
+          } else {
+            await cache.put(OFFLINE_READY_MARKER, {
+              ok: true,
+              status: 200,
+              body: markerBody,
+              clone() {
+                return { ...this };
+              },
+            });
+          }
+        }
       })
       .then(() => self.skipWaiting())
   );
@@ -73,6 +101,27 @@ self.addEventListener('activate', (event) => {
         )
       )
       .then(() => self.clients.claim())
+      .then(async () => {
+        try {
+          const cache = await caches.open(CACHE_NAME);
+          const marker = await cache.match(OFFLINE_READY_MARKER);
+          const isReady = Boolean(marker);
+          if (self.clients && typeof self.clients.matchAll === 'function') {
+            const clientList = await self.clients.matchAll({ type: 'window' });
+            for (const client of clientList) {
+              if (typeof client.postMessage === 'function') {
+                client.postMessage({
+                  type: 'OFFLINE_READY_STATUS',
+                  ready: isReady,
+                  version: BUILD_VERSION,
+                });
+              }
+            }
+          }
+        } catch {
+          // ignore
+        }
+      })
   );
 });
 
@@ -85,7 +134,6 @@ self.addEventListener('message', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
-  // Only handle GET requests
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
@@ -98,7 +146,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. NETWORK-FIRST for HTML Navigation Requests (`/`, `/index.html`, SPA routes)
+  // 2. Serve the verified offline readiness marker from cache
+  if (url.pathname === OFFLINE_READY_MARKER) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) => cache.match(OFFLINE_READY_MARKER))
+    );
+    return;
+  }
+
+  // 3. NETWORK-FIRST for HTML Navigation Requests (`/`, `/index.html`, SPA routes) with Offline Fallback
   const acceptHeader = request.headers.get('accept') || '';
   const isNavigation =
     request.mode === 'navigate' ||
@@ -128,7 +184,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. NETWORK-FIRST for `/manifest.json` and `/version.json`
+  // 4. NETWORK-FIRST for `/manifest.json` and `/version.json`
   if (url.pathname === '/manifest.json' || url.pathname === '/version.json') {
     event.respondWith(
       fetch(new Request(request.url, { cache: 'no-cache' }))
@@ -144,7 +200,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. CACHE-FIRST for Content-Fingerprinted Immutable Bundles (`/assets/*`)
+  // 5. CACHE-FIRST for Content-Fingerprinted Immutable Bundles (`/assets/*`)
   if (url.pathname.startsWith('/assets/')) {
     event.respondWith(
       caches.match(request).then((cachedResponse) => {
@@ -161,7 +217,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 5. STALE-WHILE-REVALIDATE for Icons, Logos, and Other Static Assets
+  // 6. STALE-WHILE-REVALIDATE for Icons, Logos, and Other Static Assets
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       const fetchPromise = fetch(request)

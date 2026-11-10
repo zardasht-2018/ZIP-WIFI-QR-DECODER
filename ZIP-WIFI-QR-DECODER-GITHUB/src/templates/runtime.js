@@ -1,5 +1,5 @@
 // =========================================================================
-// ZIP QR — Wi-Fi QR Decoder — Production Client-Side Runtime (v4.0)
+// ZIP QR — Wi-Fi QR Decoder — Production Client-Side Offline-Ready Runtime (v4.1)
 // =========================================================================
 /**
  * ZIP WiFi QR Decoder — Wi-Fi & Multi-Format QR Payload Parser
@@ -1853,7 +1853,15 @@ function decodeAllQRCodesFromFile(file) {
     "navSettings": "ڕێکخستنەکان",
     "langKurdish": "کوردی",
     "langEnglish": "English",
-    "heroBadge": "١٠٠٪ شیکردنەوەی ناوخۆیی لەناو وێبگەڕ • بێ هەژمار و بێ سێرڤەر",
+    "statusOnline": "سەرهێڵ: پەیوەستە",
+    "statusOffline": "دۆخی بێ ئینتەرنێت (Offline Mode)",
+    "statusOfflineReady": "ئامادەیە بۆ کارکردن بەبێ ئینتەرنێت",
+    "statusCachingProgress": "خەریکی پاشەکەوتکردنی فایلە پێویستەکانە...",
+    "statusOfflineIncomplete": "ئامادەکاری کارکردنی بێ ئینتەرنێت تەواو نەبووە",
+    "statusOnlineAndReady": "سەرهێڵ و ئامادەیە بۆ کارکردن بەبێ ئینتەرنێت",
+    "statusOfflineAndReady": "دۆخی بێ ئینتەرنێت — ئامادەیە (کارکردن لە بیرگەی ناوخۆیی)",
+    "statusOfflineUnavailable": "تایبەتمەندی Offline لەم ژینگەیەدا بەردەست نییە",
+    "heroBadge": "١٠٠٪ شیکردنەوەی ناوخۆیی لەناو وێبگەڕ • کاردەکات بەبێ ئینتەرنێت (Offline PWA)",
     "heroDescription": "هەر کۆدێکی QRـی وای-فای بە کامێرا سکان بکە یان وێنەی QR باربکە (PNG، JPG، JPEG، WEBP) بۆ دەرهێنان و پیشاندانی دەستبەجێی تێپەڕەوشەی وای-فای، ناوی تۆڕ (SSID)، جۆری پاراستن (WPA، WPA2، WPA3، WEP، کراوە، DPP)، و پاشەکەوتکردنی تەواوی مێژوو لەسەر ئامێرەکەت.",
     "btnScanQrCode": "سکانکردنی کۆدی QR",
     "btnUploadQrImage": "بارکردنی وێنەی QR",
@@ -1945,8 +1953,8 @@ function decodeAllQRCodesFromFile(file) {
     "badgeHiddenSsid": "تۆڕی شاراوە",
     "badgeSavedPassword": "تێپەڕەوشە پاشەکەوتکراوە",
     "historyPasswordExtractedPrefix": "تێپەڕەوشە پاشەکەوتکراوە",
-    "settingsTitle": "ڕێکخستنەکان و تایبەتمەندی",
-    "settingsSubtitle": "گۆڕینی زمان، ڕووکاری ڕەنگەکان، شاردنەوەی تێپەڕەوشە، و کۆنترۆڵکردنی تایبەتمەندی داتای ناوخۆیی.",
+    "settingsTitle": "ڕێکخستنەکان، تایبەتمەندی و زانیاری سیستەم",
+    "settingsSubtitle": "گۆڕینی زمان، ڕووکاری ڕەنگەکان، کۆنترۆڵکردنی تایبەتمەندی داتای ناوخۆیی، و زانیاری کارکردنی بێ ئینتەرنێت (PWA).",
     "settingsLanguageHeading": "زمان / Language",
     "settingsLanguageDesc": "زمانی پیشاندانی بەرنامەکە هەڵبژێرە (بە شێوەی خودکارانە پاشەکەوت دەکرێت).",
     "settingsThemeHeading": "ڕێکخستنی ڕووکار (Theme)",
@@ -1961,6 +1969,31 @@ function decodeAllQRCodesFromFile(file) {
     "historyPrefsHeading": "ڕێکخستنەکانی مێژووی IndexedDB",
     "enableHistoryTitle": "چالاککردنی مێژووی هەمیشەیی ناوخۆیی (لەگەڵ تێپەڕەوشەکان)",
     "enableHistoryDesc": "پاشەکەوتکردنی خودکارانەی تۆڕە سکانکراوەکان و تێپەڕەوشەی ڕاستەقینەی وای-فای لە بنکەدراوەی IndexedDBـی وێبگەڕەکەت تا دوای داخستنی وێبگەڕ یان کوژاندنەوەی ئامێرەکەش بمێننەوە.",
+    "sysInfoSectionHeading": "زانیاری بەرنامە و توانای کارکردن بەبێ ئینتەرنێت (PWA)",
+    "sysInfoReadinessLabel": "دۆخی ئامادەیی کارکردنی بێ ئینتەرنێت:",
+    "sysInfoPwaTitle": "دەربارەی ZIP QR",
+    "sysInfoPwaDesc": "ZIP QR بەرنامەیەکی وێبی پێشکەوتووە (Progressive Web App - PWA) کە دەتوانیت لە وێبگەڕە پشتگیریکراوەکان بەکاریبهێنیت و لە ئامێرە پشتگیریکراوەکان وەک ئەپێک دایمەزرێنیت.",
+    "sysInfoOfflineTitle": "کارکردن بەبێ ئینتەرنێت",
+    "sysInfoOfflineDesc": "ZIP QR دەتوانێت دوای یەکەم جار کردنەوەی سەرکەوتووی بەرنامەکە بە ئینتەرنێت و تەواوبوونی پاشەکەوتکردنی فایلە پێویستەکان، بەبێ پەیوەندی بە ئینتەرنێتیش کار بکات.",
+    "sysInfoFeaturesHeading": "لە دوای ئامادەبوونی Offline Mode، دەتوانیت:",
+    "sysInfoFeat1": "QR Code بە کامێرا بسکەنیت.",
+    "sysInfoFeat2": "وێنەی QR Upload بکەیت و بخوێنیتەوە.",
+    "sysInfoFeat3": "زانیارییەکانی Wi-Fi و پاسوۆردەکە بدۆزیتەوە.",
+    "sysInfoFeat4": "مێژووی Scan ـەکانت ببینیت.",
+    "sysInfoFeat5": "پاسوۆردە پاشەکەوتکراوەکانت ببینیت و کۆپی بکەیت.",
+    "sysInfoFeat6": "تۆماری نوێی سکان لە بنکەدراوەی ناوخۆیی پاشەکەوت بکەیت.",
+    "sysInfoFeat7": "زمان بگۆڕیت لە نێوان کوردی سۆرانی و ئینگلیزی.",
+    "sysInfoFeat8": "Settings و زانیارییەکانی بەرنامەکە بەکاربهێنیت.",
+    "sysInfoConditionsHeading": "تێبینی گرنگ:",
+    "sysInfoCond1": "بۆ یەکەم جار باربوونی بەرنامەکە، دامەزراندن، و وەرگرتنی نوێکارییەکان پێویستت بە ئینتەرنێت هەیە.",
+    "sysInfoCond2": "سکەنکردن بە کامێرا پێویستی بە HTTPS، ڕێگەپێدانی کامێرا و وێبگەڕێکی پشتگیریکار هەیە.",
+    "sysInfoCond3": "سڕینەوەی داتای وێبگەڕ یان Site Data ڕەنگە مێژوو و فایلە پاشەکەوتکراوەکان بسڕێتەوە، و سیاسەتی بیرگەی وێبگەڕ کار دەکاتە سەر مانەوەی داتا.",
+    "sysInfoCond4": "کارکردنی بێ ئینتەرنێت ناتوانێت تێپەڕەوشەیەک بگەڕێنێتەوە کە هەرگیز لەناو کۆدی QRـەکەدا تۆمار نەکرابێت.",
+    "pwaInstallHeading": "دامەزراندنی بەرنامەی ZIP QR لەسەر ئامێرەکەت",
+    "pwaInstallDesc": "دەتوانیت ZIP QR لەسەر مۆبایل یان کۆمپیوتەرەکەت دابمەزرێنیت بۆ ئەزموونێکی وەک ئەپی سەربەخۆ. بەردەستبوونی دامەزراندن بەندە بە وێبگەڕ و سیستەمی کارپێکردنی ئامێرەکەت.",
+    "btnInstallPwa": "دامەزراندنی ئەپی ZIP QR",
+    "pwaInstalledBadge": "ئەپەکە دامەزراوە (کارکردن وەک ئەپی سەربەخۆ)",
+    "pwaManualInstallHint": "بۆ دامەزراندن: لە مێنوی وێبگەڕەکەت هەڵبژاردنی \"Add to Home Screen\" (لە iPhone/Android) یان ئایکۆنی \"Install ZIP QR\" لە شریتی ناونیشانی وێبگەڕەکەت بەکاربهێنە.",
     "privacyHeading": "زانیاری تایبەتمەندی و ڕاستگۆیی تەکنیکی",
     "privacyCard1Title": "١٠٠٪ کارکردن لەسەر ئامێری بەکارهێنەر (بێ سێرڤەر)",
     "privacyCard1Desc": "پەخشی کامێرا، وێنە بارکراوەکانی QR، و تێپەڕەوشەکانی وای-فای بە تەواوی لەناو وێبگەڕەکەت شیدەکرێنەوە. هیچ زانیارییەک هەرگیز بۆ هیچ سێرڤەر یان لایەنێکی دەرەکی نانێردرێت.",
@@ -1971,7 +2004,7 @@ function decodeAllQRCodesFromFile(file) {
     "btnClearAllStoredData": "سڕینەوەی هەموو داتا پاشەکەوتکراوەکان (مێژووی IndexedDB و ڕێکخستنەکان)",
     "confirmWipePrompt": "دڵنیایت لە سڕینەوەی هەموو مێژووی IndexedDB و گەڕاندنەوەی ڕێکخستنەکان بۆ دۆخی بنەڕەتی؟",
     "btnConfirmWipe": "تەواو، هەمووی بسڕەوە",
-    "aboutHeading": "دەربارەی ZIP QR — Wi-Fi QR Decoder",
+    "aboutHeading": "دەربارەی گەشەپێدەر و پڕۆژەی ZIP QR",
     "aboutDescription": "ZIP QR — Wi-Fi QR Decoder (وەشانی PWA) — SCAN. REVEAL. CONNECT. دیزاین کراوە بۆ ئایفۆن، ئایپاد، مۆبایل و تابلێتەکانی ئەندرۆید، ویندۆز، ماکبووک، و کۆمپیوتەرەکانی لینوکس. پشتگیری لە تۆڕەکانی WPA، WPA2، WPA3-SAE، WPA2-EAP، WEP، تۆڕە کراوەکان (nopass)، تۆڕە شاراوەکان، هێما تایبەتەکان (\\; \\, \\: \\\\ \\\")، و کۆدەکانی Wi-Fi Easy Connect (DPP:) دەکات.",
     "creatorSectionBadge": "زانیاری گەشەپێدەر و دروستکەر",
     "creatorNameLabel": "ناو",
@@ -1984,7 +2017,7 @@ function decodeAllQRCodesFromFile(file) {
     "creatorContactBtn": "پەیوەندیکردن بە ئیمەیڵ",
     "creatorEmailLabel": "ئیمەیڵی پەیوەندی",
     "footerLeft": "ZIP QR — Wi-Fi QR Decoder • SCAN. REVEAL. CONNECT.",
-    "footerRight": "١٠٠٪ شیکردنەوەی ناوخۆیی کۆدی QR لەناو وێبگەڕ • بێ هەژمار و بێ ناردن بۆ سێرڤەر",
+    "footerRight": "١٠٠٪ شیکردنەوەی ناوخۆیی کۆدی QR لەناو وێبگەڕ • کاردەکات بەبێ ئینتەرنێت (Offline PWA)",
     "toastPasswordExtracted": "تێپەڕەوشە دەرهێنرا و لە مێژوو پاشەکەوت کرا بۆ",
     "toastDecodedPayload": "کۆدی QR بە سەرکەوتوویی شیکرایەوە",
     "toastPasswordCopied": "تێپەڕەوشەی وای-فای لەبەرگیرایەوە!",
@@ -2002,7 +2035,8 @@ function decodeAllQRCodesFromFile(file) {
     "toastLanguageChanged": "زمان گۆڕدرا بۆ کوردی سۆرانی.",
     "toastDecodeError": "هیچ کۆدێکی دروستی QR لەم وێنەیەدا نەدۆزرایەوە.",
     "toastTorchUnsupported": "کۆنترۆڵکردنی فلاش لەسەر ئەم کامێرایە پشتگیری ناکرێت.",
-    "toastMultipleQrFound": "چەند کۆدێکی QR لە وێنەکەدا دۆزرایەوە — دانەیەکیان هەڵبژێرە."
+    "toastMultipleQrFound": "چەند کۆدێکی QR لە وێنەکەدا دۆزرایەوە — دانەیەکیان هەڵبژێرە.",
+    "toastOfflineReadyConfirmed": "هەموو فایلە پێویستەکان پاشەکەوت کران — ئامادەیە بۆ کارکردن بەبێ ئینتەرنێت."
   },
   "en": {
     "brandPrimary": "ZIP QR",
@@ -2016,7 +2050,15 @@ function decodeAllQRCodesFromFile(file) {
     "navSettings": "Settings",
     "langKurdish": "کوردی",
     "langEnglish": "English",
-    "heroBadge": "100% Local In-Browser Decoding • No Login • Zero Server Uploads",
+    "statusOnline": "Online: Connected",
+    "statusOffline": "Offline: Offline Mode",
+    "statusOfflineReady": "Ready for Offline Use",
+    "statusCachingProgress": "Essential resources still caching...",
+    "statusOfflineIncomplete": "Offline preparation incomplete",
+    "statusOnlineAndReady": "Online and ready for offline use",
+    "statusOfflineAndReady": "Offline and ready (running from local cache)",
+    "statusOfflineUnavailable": "Offline capability unavailable in this browser context",
+    "heroBadge": "100% Local In-Browser Decoding • Full Offline PWA Support",
     "heroDescription": "Scan any Wi-Fi QR code with your camera or upload a QR image (PNG, JPG, JPEG, WEBP) to immediately extract and reveal the exact encoded Wi-Fi Password, SSID, Security Type (WPA, WPA2, WPA3, WEP, Open, DPP), and keep persistent local History on your device.",
     "btnScanQrCode": "SCAN QR CODE",
     "btnUploadQrImage": "UPLOAD QR IMAGE",
@@ -2108,8 +2150,8 @@ function decodeAllQRCodesFromFile(file) {
     "badgeHiddenSsid": "Hidden SSID",
     "badgeSavedPassword": "Saved Password",
     "historyPasswordExtractedPrefix": "Saved password",
-    "settingsTitle": "Settings & Privacy",
-    "settingsSubtitle": "Customize language, theme accents, password masking defaults, and local storage privacy controls.",
+    "settingsTitle": "Settings, Privacy & System Information",
+    "settingsSubtitle": "Customize language, theme accents, local IndexedDB storage controls, and inspect PWA & offline capabilities.",
     "settingsLanguageHeading": "Language / زمان",
     "settingsLanguageDesc": "Select the application interface language (saved automatically).",
     "settingsThemeHeading": "Theme Settings",
@@ -2124,6 +2166,31 @@ function decodeAllQRCodesFromFile(file) {
     "historyPrefsHeading": "IndexedDB History Preferences",
     "enableHistoryTitle": "Enable Persistent Local History (Including Wi-Fi Passwords)",
     "enableHistoryDesc": "Automatically save scanned networks and actual Wi-Fi passwords in your browser IndexedDB database so they remain available after closing the browser or restarting your device.",
+    "sysInfoSectionHeading": "Application Information & Offline Capabilities (PWA)",
+    "sysInfoReadinessLabel": "Current Offline Readiness Status:",
+    "sysInfoPwaTitle": "About ZIP QR",
+    "sysInfoPwaDesc": "ZIP QR is a Progressive Web App (PWA). You can use it through a supported web browser and install it on supported devices for an app-like experience.",
+    "sysInfoOfflineTitle": "Offline Functionality",
+    "sysInfoOfflineDesc": "ZIP QR can work without an internet connection after your first successful online visit and once all essential application files have been successfully cached.",
+    "sysInfoFeaturesHeading": "When offline readiness is complete, you can:",
+    "sysInfoFeat1": "Scan QR codes using your camera.",
+    "sysInfoFeat2": "Upload and decode QR images.",
+    "sysInfoFeat3": "Extract encoded Wi-Fi information and passwords.",
+    "sysInfoFeat4": "View your local scan History.",
+    "sysInfoFeat5": "Reveal and copy previously saved Wi-Fi passwords.",
+    "sysInfoFeat6": "Save new scans locally in IndexedDB.",
+    "sysInfoFeat7": "Switch between supported languages (Kurdish Sorani & English).",
+    "sysInfoFeat8": "Access application settings and local information.",
+    "sysInfoConditionsHeading": "Important Conditions & Limitations:",
+    "sysInfoCond1": "The first successful visit, initial caching, and application updates require an internet connection.",
+    "sysInfoCond2": "Live camera scanning requires HTTPS, camera permission, and a supported browser.",
+    "sysInfoCond3": "Clearing browser or site data may remove saved History and cached application files, and browser storage policies may affect persistent data.",
+    "sysInfoCond4": "Offline functionality cannot recover information that was never encoded inside a QR code (such as DPP public-key codes).",
+    "pwaInstallHeading": "Install ZIP QR on Your Device",
+    "pwaInstallDesc": "Install ZIP QR on your device for a more app-like experience. Installation availability depends on your browser and operating system.",
+    "btnInstallPwa": "Install ZIP QR App",
+    "pwaInstalledBadge": "Installed (Running in Standalone App Mode)",
+    "pwaManualInstallHint": "To install: Open your browser menu and select \"Add to Home Screen\" (iOS/Android) or click the \"Install ZIP QR\" icon in the address bar (Desktop Chrome/Edge).",
     "privacyHeading": "Privacy Architecture & Technical Transparency",
     "privacyCard1Title": "100% Client-Side Execution (Zero Server Uploads)",
     "privacyCard1Desc": "Camera frames, uploaded QR images, SSIDs, and Wi-Fi passwords are decoded and stored strictly inside your browser. No scan data is ever sent to Cloudflare Functions, external APIs, or analytics servers.",
@@ -2134,7 +2201,7 @@ function decodeAllQRCodesFromFile(file) {
     "btnClearAllStoredData": "Clear All Stored Data (IndexedDB History & Preferences)",
     "confirmWipePrompt": "Confirm wiping all IndexedDB history and resetting settings?",
     "btnConfirmWipe": "Confirm Wipe",
-    "aboutHeading": "About ZIP QR — Wi-Fi QR Decoder",
+    "aboutHeading": "Developer & Creator Profile",
     "aboutDescription": "ZIP QR — Wi-Fi QR Decoder (PWA) — SCAN. REVEAL. CONNECT. Designed for iPhones, iPads, Android phones & tablets, Windows, MacBooks, and Linux computers. Supports WPA, WPA2, WPA3-SAE, WPA2-EAP, WEP, Open (nopass), hidden networks, escaped special characters (\\; \\, \\: \\\\ \\\"), and Wi-Fi Easy Connect (DPP:).",
     "creatorSectionBadge": "Developer & Creator Identity",
     "creatorNameLabel": "Name",
@@ -2147,7 +2214,7 @@ function decodeAllQRCodesFromFile(file) {
     "creatorContactBtn": "Contact via Email",
     "creatorEmailLabel": "Contact Email",
     "footerLeft": "ZIP QR — Wi-Fi QR Decoder • SCAN. REVEAL. CONNECT.",
-    "footerRight": "100% Local In-Browser QR Decoding • No Accounts • Zero Cloud Uploads",
+    "footerRight": "100% Local In-Browser QR Decoding • Full Offline PWA Support",
     "toastPasswordExtracted": "Password extracted and saved locally for",
     "toastDecodedPayload": "Decoded QR code",
     "toastPasswordCopied": "Wi-Fi Password copied to clipboard!",
@@ -2165,7 +2232,8 @@ function decodeAllQRCodesFromFile(file) {
     "toastLanguageChanged": "Language switched to English.",
     "toastDecodeError": "Could not decode a valid QR code from this image.",
     "toastTorchUnsupported": "Flashlight control not supported on this camera.",
-    "toastMultipleQrFound": "Multiple QR codes detected in image — select one below."
+    "toastMultipleQrFound": "Multiple QR codes detected in image — select one below.",
+    "toastOfflineReadyConfirmed": "All essential app files cached — ready for offline use!"
   }
 };
 
@@ -2204,6 +2272,12 @@ function decodeAllQRCodesFromFile(file) {
     let lastDecodedPayload = '';
     let lastDecodedTime = 0;
     let torchEnabled = false;
+    let deferredInstallPrompt = null;
+    let currentOfflineStatus = {
+      isOnline: typeof navigator !== 'undefined' && 'onLine' in navigator ? Boolean(navigator.onLine) : true,
+      cacheReady: false,
+      state: 'caching'
+    };
 
     function getT() {
       const lang = appSettings.language === 'en' ? 'en' : 'ckb';
@@ -2232,6 +2306,91 @@ function decodeAllQRCodesFromFile(file) {
         formatLabel: res.formatLabel || 'Wi-Fi Network Configuration (WIFI:)',
         result: normalizedResult
       };
+    }
+
+    // =========================================================================
+    // VERIFIED OFFLINE CACHE READINESS & ONLINE/OFFLINE STATUS ENGINE
+    // =========================================================================
+    async function verifyOfflineCacheReadiness() {
+      const isOnline = typeof navigator !== 'undefined' && 'onLine' in navigator ? Boolean(navigator.onLine) : true;
+      if (typeof window === 'undefined' || !('serviceWorker' in navigator) || typeof caches === 'undefined') {
+        return { isOnline: isOnline, cacheReady: false, state: 'unavailable' };
+      }
+      try {
+        const keys = await caches.keys();
+        const zipCaches = keys.filter((k) => k.indexOf('zip-qr-cache-') === 0);
+        if (zipCaches.length === 0) {
+          return { isOnline: isOnline, cacheReady: false, state: isOnline ? 'caching' : 'incomplete' };
+        }
+        const activeName = zipCaches[zipCaches.length - 1];
+        const cache = await caches.open(activeName);
+        const hasIndex = Boolean(await cache.match('/index.html'));
+        const hasManifest = Boolean(await cache.match('/manifest.json'));
+        const hasMarker = Boolean(await cache.match('/offline-ready.json'));
+        const ready = hasIndex && hasManifest && hasMarker;
+        if (ready) {
+          return { isOnline: isOnline, cacheReady: true, state: isOnline ? 'online-ready' : 'offline-ready' };
+        }
+        return { isOnline: isOnline, cacheReady: false, state: isOnline ? 'caching' : 'incomplete' };
+      } catch (e) {
+        return { isOnline: isOnline, cacheReady: false, state: 'incomplete' };
+      }
+    }
+
+    function renderOfflineStatusIndicators() {
+      const t = getT();
+      const hdrBtn = document.getElementById('headerOfflineStatusBtn');
+      const hdrDot = document.getElementById('headerOfflineStatusDot');
+      const hdrText = document.getElementById('headerOfflineStatusText');
+      const setBadge = document.getElementById('settingsOfflineReadinessBadge');
+      const setDot = document.getElementById('settingsOfflineReadinessDot');
+      const setText = document.getElementById('settingsOfflineReadinessText');
+
+      const isOnline = currentOfflineStatus.isOnline;
+      const cacheReady = currentOfflineStatus.cacheReady;
+      const state = currentOfflineStatus.state;
+
+      if (hdrBtn && hdrDot && hdrText) {
+        if (!isOnline) {
+          hdrText.textContent = cacheReady ? t.statusOfflineAndReady : t.statusOffline;
+          hdrBtn.className = cacheReady
+            ? 'inline-flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-bold text-amber-300 transition'
+            : 'inline-flex items-center gap-1.5 rounded-xl border border-rose-500/40 bg-rose-500/10 px-2.5 py-1.5 text-[11px] font-bold text-rose-300 transition';
+          hdrDot.className = cacheReady ? 'h-2 w-2 rounded-full bg-amber-400' : 'h-2 w-2 rounded-full bg-rose-400';
+        } else {
+          hdrText.textContent = cacheReady ? t.statusOfflineReady : t.statusOnline;
+          hdrBtn.className = cacheReady
+            ? 'inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-bold text-emerald-300 transition'
+            : 'inline-flex items-center gap-1.5 rounded-xl border border-sky-500/40 bg-sky-500/10 px-2.5 py-1.5 text-[11px] font-bold text-sky-300 transition';
+          hdrDot.className = 'h-2 w-2 rounded-full bg-emerald-400';
+        }
+      }
+
+      if (setBadge && setDot && setText) {
+        let label = t.statusCachingProgress;
+        if (state === 'online-ready') label = t.statusOnlineAndReady;
+        else if (state === 'offline-ready') label = t.statusOfflineAndReady;
+        else if (state === 'caching') label = t.statusCachingProgress;
+        else if (state === 'incomplete') label = t.statusOfflineIncomplete;
+        else label = t.statusOfflineUnavailable;
+
+        setText.textContent = label;
+        if (cacheReady) {
+          setBadge.className = 'inline-flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-3.5 py-2 text-xs font-bold text-emerald-300';
+          setDot.className = 'h-2.5 w-2.5 rounded-full bg-emerald-400';
+        } else {
+          setBadge.className = 'inline-flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/15 px-3.5 py-2 text-xs font-bold text-amber-300';
+          setDot.className = 'h-2.5 w-2.5 rounded-full bg-amber-400';
+        }
+      }
+    }
+
+    async function refreshOfflineStatus() {
+      currentOfflineStatus = await verifyOfflineCacheReadiness();
+      renderOfflineStatusIndicators();
+    }
+    if (typeof window !== 'undefined') {
+      window.__zipRefreshOfflineStatus = refreshOfflineStatus;
     }
 
     function loadStoredSettings() {
@@ -2333,7 +2492,6 @@ function decodeAllQRCodesFromFile(file) {
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
           .slice(0, 200);
 
-        // Persist any migrated records into IndexedDB and remove legacy localStorage key
         for (const item of scanHistory) {
           await idbPutRecord(item);
         }
@@ -2540,6 +2698,7 @@ function decodeAllQRCodesFromFile(file) {
         torchBtn.textContent = torchEnabled ? t.flashlightOn : t.flashlightOff;
       }
 
+      renderOfflineStatusIndicators();
       renderResultsPage();
       renderHistoryViews();
     }
@@ -2582,6 +2741,8 @@ function decodeAllQRCodesFromFile(file) {
         renderResultsPage();
       } else if (pageId === 'history') {
         renderHistoryViews();
+      } else if (pageId === 'settings') {
+        void refreshOfflineStatus();
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -2601,7 +2762,6 @@ function decodeAllQRCodesFromFile(file) {
 
       if (appSettings.historyEnabled) {
         const entry = normalizeHistoryEntry(parsed);
-        // Remove duplicates of the exact same payload
         const duplicates = scanHistory.filter((item) => item.id === entry.id || item.result.rawPayload === parsed.rawPayload);
         duplicates.forEach((d) => {
           void idbDeleteRecord(d.id);
@@ -2879,7 +3039,6 @@ function decodeAllQRCodesFromFile(file) {
       topRow.appendChild(actions);
       wrapper.appendChild(topRow);
 
-      // Saved Password Row inside History Card (Masked by default: •••••••• with Show/Hide & Copy)
       if (hasSavedPassword) {
         const passRow = document.createElement('div');
         passRow.className = 'flex flex-col justify-between gap-2.5 rounded-xl border border-slate-800 bg-[#050811] px-3.5 py-2.5 sm:flex-row sm:items-center';
@@ -3052,7 +3211,6 @@ function decodeAllQRCodesFromFile(file) {
       const zoomSlider = document.getElementById('scannerZoomSlider');
       const zoomValue = document.getElementById('scannerZoomValue');
 
-      // Hide optional hardware controls until feature-detected
       if (torchBtn) torchBtn.classList.add('hidden');
       if (camSelect) camSelect.classList.add('hidden');
       if (switchCamBtn) switchCamBtn.classList.add('hidden');
@@ -3101,7 +3259,6 @@ function decodeAllQRCodesFromFile(file) {
       } catch (e) {}
       statusPill.textContent = getT().scannerAlignPrompt;
 
-      // Enumerate and sort rear cameras first; only display camera selector/switcher when 2+ cameras exist
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const cams = devices.filter((d) => d.kind === 'videoinput');
@@ -3127,7 +3284,6 @@ function decodeAllQRCodesFromFile(file) {
         }
       } catch (e) {}
 
-      // Apply continuous autofocus/exposure & detect hardware Torch and Zoom capabilities
       const track = activeStream.getVideoTracks()[0];
       if (track && typeof track.getCapabilities === 'function') {
         try {
@@ -3162,7 +3318,6 @@ function decodeAllQRCodesFromFile(file) {
         } catch (e) {}
       }
 
-      // Use requestVideoFrameCallback when available with 85ms adaptive sampling and non-overlapping lock
       if (typeof video.requestVideoFrameCallback === 'function') {
         let lastFrameCheck = 0;
         const onVideoFrame = async (now) => {
@@ -3216,6 +3371,42 @@ function decodeAllQRCodesFromFile(file) {
       applySettingsToUI();
       navigateTo('home');
       void initIndexedDBHistory();
+      void refreshOfflineStatus();
+
+      window.addEventListener('online', () => { void refreshOfflineStatus(); });
+      window.addEventListener('offline', () => { void refreshOfflineStatus(); });
+
+      // Native PWA installation & standalone mode detection
+      const installBtn = document.getElementById('settingsInstallPwaBtn');
+      const installedBadge = document.getElementById('settingsPwaInstalledBadge');
+      const manualHint = document.getElementById('settingsInstallManualHint');
+
+      if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+        if (installedBadge) installedBadge.classList.remove('hidden');
+        if (manualHint) manualHint.classList.add('hidden');
+      }
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        if (installBtn) installBtn.classList.remove('hidden');
+        if (manualHint) manualHint.classList.add('hidden');
+      });
+
+      if (installBtn) {
+        installBtn.addEventListener('click', async () => {
+          if (!deferredInstallPrompt) return;
+          await deferredInstallPrompt.prompt();
+          await deferredInstallPrompt.userChoice;
+          deferredInstallPrompt = null;
+          installBtn.classList.add('hidden');
+        });
+      }
+
+      const hdrOfflineBtn = document.getElementById('headerOfflineStatusBtn');
+      if (hdrOfflineBtn) {
+        hdrOfflineBtn.addEventListener('click', () => navigateTo('settings'));
+      }
 
       document.querySelectorAll('[data-lang-switch]').forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -3242,7 +3433,6 @@ function decodeAllQRCodesFromFile(file) {
         });
       }
 
-      // Home Paste QR Content action
       const triggerHomePasteDecode = () => {
         const pasteInput = document.getElementById('homePasteInput');
         if (pasteInput && pasteInput.value.trim()) {

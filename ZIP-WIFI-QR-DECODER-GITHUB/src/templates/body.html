@@ -19,7 +19,7 @@
         </div>
       </button>
 
-      <!-- Navigation & Language Selector (No Account / No Login Required) -->
+      <!-- Navigation, Offline Readiness Indicator & Language Selector -->
       <div class="flex flex-wrap items-center gap-2">
         <nav class="flex flex-wrap items-center gap-1 sm:gap-1.5" aria-label="Main Navigation">
           <button type="button" data-nav="home" class="nav-tab rounded-xl px-2.5 py-2 text-xs font-bold transition-all sm:px-3.5">
@@ -39,6 +39,12 @@
             <span data-i18n="navSettings">ڕێکخستنەکان</span>
           </button>
         </nav>
+
+        <!-- Live Online / Offline Mode & Cache Readiness Indicator -->
+        <button id="headerOfflineStatusBtn" type="button" class="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-bold text-emerald-300 transition hover:brightness-110">
+          <span id="headerOfflineStatusDot" class="h-2 w-2 rounded-full bg-emerald-400"></span>
+          <span id="headerOfflineStatusText" data-i18n="statusOnline">سەرهێڵ: پەیوەستە</span>
+        </button>
 
         <!-- Language Switcher: کوردی | English -->
         <div class="inline-flex items-center rounded-xl border border-slate-700/90 bg-[#0a1020] p-0.5" role="group" aria-label="Language Selector">
@@ -86,7 +92,7 @@
         <div class="mx-auto max-w-3xl text-center">
           <div class="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-3.5 py-1 text-[11px] font-bold uppercase tracking-widest text-sky-300">
             <span class="h-2 w-2 rounded-full bg-emerald-400 shrink-0"></span>
-            <span data-i18n="heroBadge">١٠٠٪ شیکردنەوەی ناوخۆیی لەناو وێبگەڕ • بێ هەژمار و بێ سێرڤەر</span>
+            <span data-i18n="heroBadge">١٠٠٪ شیکردنەوەی ناوخۆیی لەناو وێبگەڕ • کاردەکات بەبێ ئینتەرنێت (Offline PWA)</span>
           </div>
 
           <h1 dir="ltr" class="text-3xl font-black tracking-tight text-white sm:text-5xl">
@@ -462,11 +468,11 @@
       <div id="historyListContainer" class="space-y-3"></div>
     </section>
 
-    <!-- ==================== PAGE 5: SETTINGS & ABOUT ==================== -->
+    <!-- ==================== PAGE 5: SETTINGS, SYSTEM INFO & OFFLINE PWA ==================== -->
     <section id="page-settings" class="hidden mx-auto max-w-4xl space-y-6">
       <div class="rounded-3xl border border-slate-800 zip-surface p-6">
-        <h1 data-i18n="settingsTitle" class="text-2xl font-black text-white">ڕێکخستنەکان و تایبەتمەندی</h1>
-        <p data-i18n="settingsSubtitle" class="mt-1 text-xs text-slate-400">گۆڕینی زمان، ڕووکاری ڕەنگەکان، شاردنەوەی تێپەڕەوشە، و کۆنترۆڵکردنی تایبەتمەندی داتای ناوخۆیی.</p>
+        <h1 data-i18n="settingsTitle" class="text-2xl font-black text-white">ڕێکخستنەکان، تایبەتمەندی و زانیاری سیستەم</h1>
+        <p data-i18n="settingsSubtitle" class="mt-1 text-xs text-slate-400">گۆڕینی زمان، ڕووکاری ڕەنگەکان، کۆنترۆڵکردنی تایبەتمەندی داتای ناوخۆیی، و زانیاری کارکردنی بێ ئینتەرنێت (PWA).</p>
       </div>
 
       <!-- 0. Language Settings -->
@@ -485,7 +491,104 @@
         </div>
       </div>
 
-      <!-- 1. Theme Settings -->
+      <!-- 1. DEDICATED APPLICATION INFORMATION, PWA & OFFLINE CAPABILITIES SECTION -->
+      <div id="settingsPwaOfflineSection" class="rounded-3xl border border-sky-500/30 zip-surface p-6 space-y-5">
+        <div class="flex flex-col justify-between gap-3 border-b border-slate-800 pb-4 sm:flex-row sm:items-center">
+          <div>
+            <h2 data-i18n="sysInfoSectionHeading" class="text-sm font-bold uppercase tracking-widest text-sky-400">زانیاری بەرنامە و توانای کارکردن بەبێ ئینتەرنێت (PWA)</h2>
+            <p data-i18n="sysInfoReadinessLabel" class="mt-1 text-xs text-slate-400">دۆخی ئامادەیی کارکردنی بێ ئینتەرنێت:</p>
+          </div>
+          <div id="settingsOfflineReadinessBadge" class="inline-flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-3.5 py-2 text-xs font-bold text-emerald-300">
+            <span id="settingsOfflineReadinessDot" class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
+            <span id="settingsOfflineReadinessText" data-i18n="statusOnlineAndReady">سەرهێڵ و ئامادەیە بۆ کارکردن بەبێ ئینتەرنێت</span>
+          </div>
+        </div>
+
+        <!-- Card A & Card B: Web App (PWA) & Offline Functionality -->
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="rounded-2xl border border-slate-800 zip-card p-4 space-y-2">
+            <div class="flex items-center gap-2.5">
+              <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/15 text-sky-400 shrink-0">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="3" width="20" height="14" rx="2"/>
+                  <path d="M8 21h8M12 17v4" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <h3 data-i18n="sysInfoPwaTitle" class="text-sm font-bold text-white">دەربارەی ZIP QR</h3>
+            </div>
+            <p data-i18n="sysInfoPwaDesc" class="text-xs leading-relaxed text-slate-300">
+              ZIP QR بەرنامەیەکی وێبی پێشکەوتووە (Progressive Web App - PWA) کە دەتوانیت لە وێبگەڕە پشتگیریکراوەکان بەکاریبهێنیت و لە ئامێرە پشتگیریکراوەکان وەک ئەپێک دایمەزرێنیت.
+            </p>
+          </div>
+
+          <div class="rounded-2xl border border-slate-800 zip-card p-4 space-y-2">
+            <div class="flex items-center gap-2.5">
+              <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300 shrink-0">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <h3 data-i18n="sysInfoOfflineTitle" class="text-sm font-bold text-white">کارکردن بەبێ ئینتەرنێت</h3>
+            </div>
+            <p data-i18n="sysInfoOfflineDesc" class="text-xs leading-relaxed text-slate-300">
+              ZIP QR دەتوانێت دوای یەکەم جار کردنەوەی سەرکەوتووی بەرنامەکە بە ئینتەرنێت و تەواوبوونی پاشەکەوتکردنی فایلە پێویستەکان، بەبێ پەیوەندی بە ئینتەرنێتیش کار بکات.
+            </p>
+          </div>
+        </div>
+
+        <!-- Card C: 8 Offline Features Checklist -->
+        <div class="rounded-2xl border border-slate-800 zip-card p-4 space-y-3">
+          <h3 data-i18n="sysInfoFeaturesHeading" class="text-xs font-bold uppercase tracking-wider text-emerald-300">
+            لە دوای ئامادەبوونی Offline Mode، دەتوانیت:
+          </h3>
+          <ul class="grid grid-cols-1 gap-2 sm:grid-cols-2 text-xs text-slate-200">
+            <li class="flex items-center gap-2"><span class="font-bold text-emerald-400">✓</span><span data-i18n="sysInfoFeat1">QR Code بە کامێرا بسکەنیت.</span></li>
+            <li class="flex items-center gap-2"><span class="font-bold text-emerald-400">✓</span><span data-i18n="sysInfoFeat2">وێنەی QR Upload بکەیت و بخوێنیتەوە.</span></li>
+            <li class="flex items-center gap-2"><span class="font-bold text-emerald-400">✓</span><span data-i18n="sysInfoFeat3">زانیارییەکانی Wi-Fi و پاسوۆردەکە بدۆزیتەوە.</span></li>
+            <li class="flex items-center gap-2"><span class="font-bold text-emerald-400">✓</span><span data-i18n="sysInfoFeat4">مێژووی Scan ـەکانت ببینیت.</span></li>
+            <li class="flex items-center gap-2"><span class="font-bold text-emerald-400">✓</span><span data-i18n="sysInfoFeat5">پاسوۆردە پاشەکەوتکراوەکانت ببینیت و کۆپی بکەیت.</span></li>
+            <li class="flex items-center gap-2"><span class="font-bold text-emerald-400">✓</span><span data-i18n="sysInfoFeat6">تۆماری نوێی سکان لە بنکەدراوەی ناوخۆیی پاشەکەوت بکەیت.</span></li>
+            <li class="flex items-center gap-2"><span class="font-bold text-emerald-400">✓</span><span data-i18n="sysInfoFeat7">زمان بگۆڕیت لە نێوان کوردی سۆرانی و ئینگلیزی.</span></li>
+            <li class="flex items-center gap-2"><span class="font-bold text-emerald-400">✓</span><span data-i18n="sysInfoFeat8">Settings و زانیارییەکانی بەرنامەکە بەکاربهێنیت.</span></li>
+          </ul>
+        </div>
+
+        <!-- Card D: Important Conditions & Limitations -->
+        <div class="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-2.5">
+          <h3 data-i18n="sysInfoConditionsHeading" class="text-xs font-bold uppercase tracking-wider text-amber-300">
+            تێبینی گرنگ:
+          </h3>
+          <ul class="space-y-1.5 text-xs leading-relaxed text-slate-300">
+            <li>• <span data-i18n="sysInfoCond1">بۆ یەکەم جار باربوونی بەرنامەکە، دامەزراندن، و وەرگرتنی نوێکارییەکان پێویستت بە ئینتەرنێت هەیە.</span></li>
+            <li>• <span data-i18n="sysInfoCond2">سکەنکردن بە کامێرا پێویستی بە HTTPS، ڕێگەپێدانی کامێرا و وێبگەڕێکی پشتگیریکار هەیە.</span></li>
+            <li>• <span data-i18n="sysInfoCond3">سڕینەوەی داتای وێبگەڕ یان Site Data ڕەنگە مێژوو و فایلە پاشەکەوتکراوەکان بسڕێتەوە، و سیاسەتی بیرگەی وێبگەڕ کار دەکاتە سەر مانەوەی داتا.</span></li>
+            <li>• <span data-i18n="sysInfoCond4">کارکردنی بێ ئینتەرنێت ناتوانێت تێپەڕەوشەیەک بگەڕێنێتەوە کە هەرگیز لەناو کۆدی QRـەکەدا تۆمار نەکرابێت.</span></li>
+          </ul>
+        </div>
+
+        <!-- Card E: PWA Installation Guidance & Native Prompt Button -->
+        <div class="flex flex-col justify-between gap-4 rounded-2xl border border-sky-500/30 zip-card p-4 sm:flex-row sm:items-center">
+          <div class="space-y-1">
+            <h3 data-i18n="pwaInstallHeading" class="text-sm font-bold text-white">دامەزراندنی بەرنامەی ZIP QR لەسەر ئامێرەکەت</h3>
+            <p data-i18n="pwaInstallDesc" class="text-xs text-slate-300">
+              دەتوانیت ZIP QR لەسەر مۆبایل یان کۆمپیوتەرەکەت دابمەزرێنیت بۆ ئەزموونێکی وەک ئەپی سەربەخۆ. بەردەستبوونی دامەزراندن بەندە بە وێبگەڕ و سیستەمی کارپێکردنی ئامێرەکەت.
+            </p>
+            <p id="settingsInstallManualHint" data-i18n="pwaManualInstallHint" class="pt-1 text-[11px] text-sky-300">
+              بۆ دامەزراندن: لە مێنوی وێبگەڕەکەت هەڵبژاردنی "Add to Home Screen" (لە iPhone/Android) یان ئایکۆنی "Install ZIP QR" لە شریتی ناونیشانی وێبگەڕەکەت بەکاربهێنە.
+            </p>
+          </div>
+          <div class="shrink-0">
+            <span id="settingsPwaInstalledBadge" data-i18n="pwaInstalledBadge" class="hidden rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-4 py-2 text-xs font-bold text-emerald-300">
+              ئەپەکە دامەزراوە (کارکردن وەک ئەپی سەربەخۆ)
+            </span>
+            <button id="settingsInstallPwaBtn" type="button" data-i18n="btnInstallPwa" class="hidden zip-gradient-btn rounded-xl px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white transition hover:brightness-110">
+              دامەزراندنی ئەپی ZIP QR
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Theme Settings -->
       <div class="rounded-3xl border border-slate-800 zip-surface p-6 space-y-4">
         <h2 data-i18n="settingsThemeHeading" class="text-sm font-bold uppercase tracking-widest text-sky-400">ڕێکخستنی ڕووکار (Theme)</h2>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -512,7 +615,7 @@
         </div>
       </div>
 
-      <!-- 2. History Preferences -->
+      <!-- 3. History Preferences -->
       <div class="rounded-3xl border border-slate-800 zip-surface p-6 space-y-4">
         <h2 data-i18n="historyPrefsHeading" class="text-sm font-bold uppercase tracking-widest text-sky-400">ڕێکخستنەکانی مێژووی IndexedDB</h2>
         <div class="flex items-center justify-between gap-4 rounded-2xl border border-slate-800 zip-card p-4">
@@ -524,7 +627,7 @@
         </div>
       </div>
 
-      <!-- 3. Privacy Information & Clear Stored Data -->
+      <!-- 4. Privacy Information & Clear Stored Data -->
       <div class="rounded-3xl border border-slate-800 zip-surface p-6 space-y-4">
         <h2 data-i18n="privacyHeading" class="text-sm font-bold uppercase tracking-widest text-sky-400">زانیاری تایبەتمەندی و ڕاستگۆیی تەکنیکی</h2>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 text-xs text-slate-300">
@@ -554,10 +657,10 @@
         </div>
       </div>
 
-      <!-- 4. About ZIP QR & Developer / Creator Identity Section -->
+      <!-- 5. Developer / Creator Identity Section -->
       <div id="aboutSectionCard" class="rounded-3xl border border-slate-800 zip-surface p-6 space-y-6">
         <div>
-          <h2 data-i18n="aboutHeading" class="text-sm font-bold uppercase tracking-widest text-sky-400">دەربارەی ZIP QR — Wi-Fi QR Decoder</h2>
+          <h2 data-i18n="aboutHeading" class="text-sm font-bold uppercase tracking-widest text-sky-400">دەربارەی گەشەپێدەر و پڕۆژەی ZIP QR</h2>
           <p data-i18n="aboutDescription" class="mt-2 text-xs leading-relaxed text-slate-300">
             ZIP QR — Wi-Fi QR Decoder (وەشانی PWA) — SCAN. REVEAL. CONNECT. دیزاین کراوە بۆ ئایفۆن، ئایپاد، مۆبایل و تابلێتەکانی ئەندرۆید، ویندۆز، ماکبووک، و کۆمپیوتەرەکانی لینوکس. پشتگیری لە تۆڕەکانی WPA، WPA2، WPA3-SAE، WPA2-EAP، WEP، تۆڕە کراوەکان (nopass)، تۆڕە شاراوەکان، هێما تایبەتەکان (\; \, \: \\ \")، و کۆدەکانی Wi-Fi Easy Connect (DPP:) دەکات.
           </p>
@@ -617,6 +720,6 @@
   <footer class="border-t border-slate-800/80 bg-[#04060d] py-5 text-center text-xs text-slate-400">
     <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 sm:flex-row sm:px-6">
       <span id="footerLeftText" dir="ltr" class="font-bold text-slate-300">ZIP QR — Wi-Fi QR Decoder • SCAN. REVEAL. CONNECT.</span>
-      <span id="footerRightText" data-i18n="footerRight">١٠٠٪ شیکردنەوەی ناوخۆیی کۆدی QR لەناو وێبگەڕ • بێ هەژمار و بێ ناردن بۆ سێرڤەر</span>
+      <span id="footerRightText" data-i18n="footerRight">١٠٠٪ شیکردنەوەی ناوخۆیی کۆدی QR لەناو وێبگەڕ • کاردەکات بەبێ ئینتەرنێت (Offline PWA)</span>
     </div>
   </footer>

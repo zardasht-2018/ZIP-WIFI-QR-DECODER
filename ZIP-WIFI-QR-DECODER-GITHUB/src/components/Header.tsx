@@ -1,5 +1,6 @@
 import React from 'react';
 import { ActivePage } from '../types';
+import { OfflineStatusReport } from '../services/swUpdateService';
 import { SupportedLanguage, TRANSLATIONS } from '../i18n/translations';
 
 interface HeaderProps {
@@ -8,6 +9,7 @@ interface HeaderProps {
   historyCount: number;
   language: SupportedLanguage;
   onLanguageChange: (lang: SupportedLanguage) => void;
+  offlineStatus?: OfflineStatusReport;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,6 +18,7 @@ export const Header: React.FC<HeaderProps> = ({
   historyCount,
   language,
   onLanguageChange,
+  offlineStatus,
 }) => {
   const t = TRANSLATIONS[language];
 
@@ -26,6 +29,31 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'history', label: t.navHistory, count: historyCount },
     { id: 'settings', label: t.navSettings },
   ];
+
+  const isOnline = offlineStatus ? offlineStatus.isOnline : true;
+  const cacheReady = offlineStatus ? offlineStatus.cacheReady : false;
+
+  const badgeLabel = !isOnline
+    ? cacheReady
+      ? t.statusOfflineAndReady
+      : t.statusOffline
+    : cacheReady
+    ? t.statusOfflineReady
+    : t.statusOnline;
+
+  const badgeColor = !isOnline
+    ? cacheReady
+      ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+      : 'border-rose-500/40 bg-rose-500/10 text-rose-300'
+    : cacheReady
+    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+    : 'border-sky-500/40 bg-sky-500/10 text-sky-300';
+
+  const dotColor = !isOnline
+    ? cacheReady
+      ? 'bg-amber-400'
+      : 'bg-rose-400'
+    : 'bg-emerald-400';
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-[#050811]/90 backdrop-blur-xl">
@@ -78,6 +106,16 @@ export const Header: React.FC<HeaderProps> = ({
               );
             })}
           </nav>
+
+          {/* Online / Offline Readiness Status Indicator */}
+          <button
+            type="button"
+            onClick={() => onNavigate('settings')}
+            className={`hidden sm:inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[11px] font-bold transition ${badgeColor}`}
+          >
+            <span className={`h-2 w-2 rounded-full ${dotColor}`} />
+            <span>{badgeLabel}</span>
+          </button>
 
           {/* Language Switcher: کوردی | English */}
           <div
