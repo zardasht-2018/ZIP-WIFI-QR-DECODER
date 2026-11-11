@@ -341,61 +341,40 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         </div>
       </section>
 
-      {/* About ZIP QR & Developer Creator Card */}
-      <section className="rounded-3xl border border-slate-800 bg-[#080d1a] p-6 space-y-6">
-        <div>
-          <h2 className="text-sm font-bold uppercase tracking-widest text-sky-400">
-            {t.aboutHeading}
-          </h2>
-          <p className="mt-2 text-xs leading-relaxed text-slate-300">{t.aboutDescription}</p>
+      {/* About the Project & Creator Section */}
+      <section className="rounded-3xl border border-slate-800 bg-[#080d1a] p-6 sm:p-8 space-y-6">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-baseline gap-2.5">
+            <h2 dir="ltr" className="text-xl font-black tracking-tight text-white sm:text-2xl">
+              ZIP QR
+            </h2>
+            <span className="text-slate-600" aria-hidden="true">•</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-sky-400">
+              {t.aboutProjectSubtitle}
+            </span>
+          </div>
+          <p className="max-w-2xl text-sm leading-relaxed text-slate-300">{t.aboutDescription}</p>
         </div>
 
-        {/* Creator / Developer Identity Card */}
-        <div className="relative overflow-hidden rounded-2xl border border-sky-500/40 bg-gradient-to-br from-[#0c1428] via-[#090d1a] to-[#140c29] p-5 shadow-xl sm:p-6">
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-            <div className="space-y-2">
-              <span className="inline-block rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider text-sky-300">
-                {t.creatorSectionBadge}
-              </span>
-              <h3 className="text-xl font-black text-white">{t.creatorNameValue}</h3>
-              <p className="text-xs font-bold uppercase tracking-wider text-purple-300">
-                {t.creatorTitleValue}
-              </p>
-              <p className="text-sm font-medium text-slate-200">{t.creatorCreditLine}</p>
-            </div>
+        <div className="border-t border-slate-800/90" />
 
-            <div className="flex flex-col items-start gap-2.5 sm:items-end">
-              <a
-                href="mailto:zardashtmuhammad12@gmail.com"
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-purple-600 px-5 py-3 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-sky-500/25 transition hover:brightness-110"
-              >
-                <span>{t.creatorContactBtn}</span>
-              </a>
-              <a
-                href="mailto:zardashtmuhammad12@gmail.com"
-                dir="ltr"
-                className="font-mono text-xs text-sky-300 hover:underline"
-              >
-                zardashtmuhammad12@gmail.com
-              </a>
-            </div>
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div className="space-y-1">
+            <h3 className="text-lg font-extrabold tracking-tight text-white sm:text-xl">
+              {t.creatorNameValue}
+            </h3>
+            <p className="text-xs font-semibold tracking-wide text-purple-300 sm:text-sm">
+              {t.creatorTitleValue}
+            </p>
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-3 border-t border-slate-800/90 pt-4 sm:grid-cols-3 text-xs">
-            <div className="rounded-xl border border-slate-800 bg-[#050811]/80 p-3">
-              <span className="text-[11px] text-slate-400">{t.creatorNameLabel}</span>
-              <p className="mt-0.5 font-bold text-white">{t.creatorNameValue}</p>
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-[#050811]/80 p-3">
-              <span className="text-[11px] text-slate-400">{t.creatorTitleLabel}</span>
-              <p className="mt-0.5 font-bold text-white">{t.creatorTitleValue}</p>
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-[#050811]/80 p-3">
-              <span className="text-[11px] text-slate-400">{t.creatorProjectLabel}</span>
-              <p className="mt-0.5 font-bold text-sky-300" dir="ltr">
-                {t.creatorProjectValue}
-              </p>
-            </div>
+          <div className="shrink-0">
+            <a
+              href="mailto:zardashtmuhammad12@gmail.com"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-purple-600 px-5 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-sky-500/25 transition hover:brightness-110"
+            >
+              <span>{t.creatorContactBtn}</span>
+            </a>
           </div>
         </div>
       </section>

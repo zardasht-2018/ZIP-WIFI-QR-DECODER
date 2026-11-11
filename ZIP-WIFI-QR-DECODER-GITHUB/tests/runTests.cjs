@@ -339,19 +339,27 @@ print(json.dumps(out))
     assert.strictEqual(svc.getSettings().language, 'ckb');
   });
 
-  // 17. Developer / Creator Identity Verification
-  await runTest(17, 'Creator identity credits Zardasht Muhammad in Kurdish & English with valid mailto link', () => {
+  // 17. Developer / Creator Identity & Non-Repetitive About Section Verification
+  await runTest(17, 'About section displays project info and credits Zardasht Muhammad once without repetition', () => {
     assert.strictEqual(
-      i18nMod.TRANSLATIONS.en.creatorCreditLine,
-      'Created and developed by Zardasht Muhammad.'
+      i18nMod.TRANSLATIONS.en.creatorTitleValue,
+      'Creator & Developer of ZIP QR'
     );
     assert.strictEqual(
-      i18nMod.TRANSLATIONS.ckb.creatorCreditLine,
-      'دروستکراو و پەرەپێدراوە لەلایەن زەردەشت محمد.'
+      i18nMod.TRANSLATIONS.en.aboutProjectSubtitle,
+      'Wi-Fi QR Decoder'
+    );
+    assert.strictEqual(
+      i18nMod.TRANSLATIONS.en.aboutDescription,
+      'A simple and powerful tool for scanning Wi-Fi QR codes, revealing encoded network details, and managing saved scans.'
     );
     const bodyHtml = fs.readFileSync(path.join(projectRoot, 'src/templates/body.html'), 'utf8');
-    assert.ok(bodyHtml.includes('href="mailto:zardashtmuhammad12@gmail.com"'));
-    assert.ok(bodyHtml.includes('Zardasht Muhammad'));
+    const aboutStart = bodyHtml.indexOf('id="aboutSectionCard"');
+    assert.ok(aboutStart !== -1, 'Missing #aboutSectionCard');
+    const aboutSlice = bodyHtml.slice(aboutStart);
+    assert.strictEqual((aboutSlice.match(/Zardasht Muhammad/g) || []).length, 1, 'Creator name should appear only once in About section');
+    assert.strictEqual((aboutSlice.match(/mailto:zardashtmuhammad12@gmail\.com/g) || []).length, 1, 'Creator email link should appear only once in About section');
+    assert.strictEqual((aboutSlice.match(/data-i18n="creatorTitleValue"/g) || []).length, 1, 'Creator role should appear only once in About section');
   });
 
   // 18. PWA Manifest, Platform Metadata & Official Icon Verification

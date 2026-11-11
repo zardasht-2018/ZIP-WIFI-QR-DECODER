@@ -191,6 +191,7 @@ export interface TranslationDictionary {
 
   // About & Developer Identity Section
   aboutHeading: string;
+  aboutProjectSubtitle: string;
   aboutDescription: string;
   creatorSectionBadge: string;
   creatorNameLabel: string;
@@ -444,13 +445,14 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
 
     // About & Developer Identity Section
     aboutHeading: 'دەربارەی گەشەپێدەر و پڕۆژەی ZIP QR',
+    aboutProjectSubtitle: 'شیکەرەوەی کۆدی QRـی وای-فای',
     aboutDescription:
-      'ZIP QR — Wi-Fi QR Decoder (وەشانی PWA) — SCAN. REVEAL. CONNECT. دیزاین کراوە بۆ ئایفۆن، ئایپاد، مۆبایل و تابلێتەکانی ئەندرۆید، ویندۆز، ماکبووک، و کۆمپیوتەرەکانی لینوکس. پشتگیری لە تۆڕەکانی WPA، WPA2، WPA3-SAE، WPA2-EAP، WEP، تۆڕە کراوەکان (nopass)، تۆڕە شاراوەکان، هێما تایبەتەکان (\\; \\, \\: \\\\ \\")، و کۆدەکانی Wi-Fi Easy Connect (DPP:) دەکات.',
+      'ئامرازێکی سادە و بەهێز بۆ سکانکردنی کۆدەکانی QRـی وای-فای، ئاشکراکردنی زانیارییە تۆمارکراوەکانی تۆڕ، و بەڕێوەبردنی سکانە پاشەکەوتکراوەکان.',
     creatorSectionBadge: 'زانیاری گەشەپێدەر و دروستکەر',
     creatorNameLabel: 'ناو',
     creatorNameValue: 'زەردەشت محمد (Zardasht Muhammad)',
     creatorTitleLabel: 'ناونیشانی پیشەیی',
-    creatorTitleValue: 'گەشەپێدەر و دروستکەر (Developer & Creator)',
+    creatorTitleValue: 'دروستکەر و گەشەپێدەری ZIP QR',
     creatorProjectLabel: 'پڕۆژە',
     creatorProjectValue: 'ZIP QR — Wi-Fi QR Decoder',
     creatorCreditLine: 'دروستکراو و پەرەپێدراوە لەلایەن زەردەشت محمد.',
@@ -698,13 +700,14 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
 
     // About & Developer Identity Section
     aboutHeading: 'Developer & Creator Profile',
+    aboutProjectSubtitle: 'Wi-Fi QR Decoder',
     aboutDescription:
-      'ZIP QR — Wi-Fi QR Decoder (PWA) — SCAN. REVEAL. CONNECT. Designed for iPhones, iPads, Android phones & tablets, Windows, MacBooks, and Linux computers. Supports WPA, WPA2, WPA3-SAE, WPA2-EAP, WEP, Open (nopass), hidden networks, escaped special characters (\\; \\, \\: \\\\ \\"), and Wi-Fi Easy Connect (DPP:).',
+      'A simple and powerful tool for scanning Wi-Fi QR codes, revealing encoded network details, and managing saved scans.',
     creatorSectionBadge: 'Developer & Creator Identity',
     creatorNameLabel: 'Name',
     creatorNameValue: 'Zardasht Muhammad',
     creatorTitleLabel: 'Professional Title',
-    creatorTitleValue: 'Developer & Creator',
+    creatorTitleValue: 'Creator & Developer of ZIP QR',
     creatorProjectLabel: 'Project',
     creatorProjectValue: 'ZIP QR — Wi-Fi QR Decoder',
     creatorCreditLine: 'Created and developed by Zardasht Muhammad.',
