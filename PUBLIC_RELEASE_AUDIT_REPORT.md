@@ -1,0 +1,18 @@
+# ZIP QR — Final Public-Release Readiness Audit Report
+
+## 1. Summary of Audited & Resolved Items
+
+| Audit Item | Root Cause Identified | Resolution Implemented | Verification Result |
+| :--- | :--- | :--- | :--- |
+| **1. Node.js 22 `npm test` Compatibility (`33/36` → `36/36`)** | Node.js 21/22+ defines `globalThis.navigator` as a getter-only property (`TypeError: Cannot set property navigator of #<Object> which has only a getter`), causing Tests 15, 32, and 33 to fail when assigning `global.navigator = ...`. | Added `setGlobalProp(name, value)` in `tests/runTests.cjs` using `Object.defineProperty(globalThis, name, { value, writable: true, configurable: true, enumerable: true })` and replaced direct `global.navigator`, `global.window`, `global.caches`, and `global.sessionStorage` assignments. Also added a test simulation of Node.js 22's getter-only `globalThis.navigator` descriptor prior to overriding it. | **PASS (`36 / 36` suites pass on standard `npm test` with zero CLI workarounds)** |
+| **2. Removal of 200-Record History Limit** | `MAX_HISTORY_RECORDS = 200` in `src/services/storageService.ts` and `src/compiled/storageService.cjs`, and `.slice(0, 200)` in `src/templates/runtime.js` (lines 2751 & 3030), silently truncated local History beyond 200 entries. | Removed `MAX_HISTORY_RECORDS` and all `.slice(0, 200)` caps in `src/services/storageService.ts`, `src/compiled/storageService.cjs`, and `src/templates/runtime.js` while preserving all existing IndexedDB records. Expanded Test 14 to insert and verify **250 distinct Wi-Fi records** (including oldest `#001` and newest `#250` with passwords) and assert zero `.slice(0, 200)` or `MAX_HISTORY_RECORDS` occurrences in source files. | **PASS (All 250+ records and passwords retained without truncation)** |
+| **3. Cross-Platform Python Test Prerequisites (`OpenCV`, `Pillow`, `NumPy`)** | `tests/runTests.cjs` previously invoked `python3 -c '...'` with single quotes, which can fail on Windows `cmd.exe` or systems where Python is installed as `python` or `py -3`, and `README.md` lacked Python setup instructions. | Added `getPythonCommand()` (`python3` / `python` / `py -3` auto-detection) and `runPythonJson(pyScript)` piping scripts via `stdin` in `tests/runTests.cjs`, and documented step-by-step installation commands (`opencv-python`, `pillow`, `numpy`) for Windows (PowerShell/CMD), macOS, and Linux in `README.md`. | **PASS (Cross-platform stdin execution verified across all image synthesis suites)** |
+| **4. Production Build Source-of-Truth Documentation in `README.md`** | `README.md` did not distinguish between active production template files (`src/templates/*`, `public/*`) used by `scripts/buildDist.cjs` and inactive React reference files (`src/components/*.tsx`, `src/pages/*.tsx`, `src/App.tsx`). | Added a dedicated **Production Build Architecture** section and file-mapping table in `README.md` clearly explaining active production files (`src/templates/body.html`, `src/templates/app.css`, `src/templates/runtime.js`, `public/*`), core `.ts`/`.cjs` test modules, and inactive `.tsx` reference files. | **PASS (Documented in `README.md`)** |
+
+---
+
+## 2. Command Verification Output (`npm ci`, `npm test`, `npm run build`)
+
+1. **`npm ci`**: Completed cleanly (`0 vulnerabilities`), verifying `package.json` and `package-lock.json` are strictly synchronized.
+2. **`npm test`**: Executed all **36 automated test suites** (`36 passed, 0 failed`), including getter-only `globalThis.navigator` compatibility and 250-record unlimited History persistence.
+3. **`npm run build`**: Generated the self-contained offline-ready production distribution in `dist/` (`v2.5.0-74eb860f`).

@@ -1,0 +1,13 @@
+{
+  "name": "zip-wifi-qr-decoder",
+  "version": "2.4.0",
+  "private": true,
+  "description": "ZIP WiFi QR Decoder — SCAN. REVEAL. CONNECT. Cross-platform PWA for local Wi-Fi QR decoding and password extraction.",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/devServer.cjs",
+    "build": "node scripts/buildDist.cjs",
+    "preview": "node scripts/devServer.cjs",
+    "test": "node tests/runTests.cjs"
+  }
+}
