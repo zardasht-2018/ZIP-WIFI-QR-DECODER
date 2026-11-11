@@ -8,6 +8,51 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const { execSync } = require('child_process');
+
+/**
+ * Node.js 22+ Safe Global Property Setter:
+ * Node.js 21/22+ defines `globalThis.navigator` as a getter-only property on globalThis.
+ * Using `Object.defineProperty` safely overrides getter-only globals across all Node versions.
+ */
+function setGlobalProp(name, value) {
+  Object.defineProperty(globalThis, name, {
+    value,
+    writable: true,
+    configurable: true,
+    enumerable: true,
+  });
+}
+
+/**
+ * Cross-Platform Python Runner (Windows, macOS, Linux):
+ * Detects `python3`, `python`, or `py -3` and pipes the Python script over stdin
+ * to avoid Windows cmd.exe single-quote escaping issues.
+ */
+let cachedPythonCmd = null;
+function getPythonCommand() {
+  if (cachedPythonCmd) return cachedPythonCmd;
+  for (const candidate of ['python3', 'python', 'py -3']) {
+    try {
+      execSync(`${candidate} -c "import cv2, PIL, numpy"`, { stdio: 'ignore' });
+      cachedPythonCmd = candidate;
+      return candidate;
+    } catch {
+      // try next candidate
+    }
+  }
+  throw new Error(
+    'Python 3 with opencv-python, Pillow, and numpy is required to run image synthesis tests. Install via: pip install opencv-python pillow numpy'
+  );
+}
+
+function runPythonJson(pyScript) {
+  const pyCmd = getPythonCommand();
+  const stdout = execSync(`${pyCmd} -`, {
+    input: pyScript,
+    maxBuffer: 150 * 1024 * 1024,
+  });
+  return JSON.parse(stdout.toString());
+}
 const { performance } = require('perf_hooks');
 
 const projectRoot = path.resolve(__dirname, '..');
@@ -298,6 +343,35 @@ print(json.dumps(out))
     svc.saveSettings({ historyEnabled: true });
     svc.clearHistory();
     assert.strictEqual(svc.getHistory().length, 0);
+
+    // Verify >200 records (250 records) are stored and preserved without silent truncation
+    const totalBulkRecords = 250;
+    for (let i = 1; i <= totalBulkRecords; i++) {
+      const padded = String(i).padStart(3, '0');
+      const bulkParsed = wifiParser.parseQRPayload(
+        `WIFI:T:WPA2;S:Unlimited_History_Net_${padded};P:SavedPass_${padded}_#2026;H:false;;`
+      );
+      svc.addHistoryEntry(bulkParsed);
+    }
+    const bulkHistory = svc.getHistory();
+    assert.strictEqual(
+      bulkHistory.length,
+      totalBulkRecords,
+      `Expected all ${totalBulkRecords} records to be retained without a 200-record cap`
+    );
+    assert.strictEqual(bulkHistory[0].ssid, 'Unlimited_History_Net_250');
+    assert.strictEqual(bulkHistory[0].password, 'SavedPass_250_#2026');
+    assert.strictEqual(bulkHistory[totalBulkRecords - 1].ssid, 'Unlimited_History_Net_001');
+    assert.strictEqual(bulkHistory[totalBulkRecords - 1].password, 'SavedPass_001_#2026');
+
+    // Verify runtime.js and storageService.ts have no 200-record slice cap
+    const runtimeJsText = fs.readFileSync(path.join(projectRoot, 'src/templates/runtime.js'), 'utf8');
+    const storageTsText = fs.readFileSync(path.join(projectRoot, 'src/services/storageService.ts'), 'utf8');
+    assert.strictEqual(runtimeJsText.includes('.slice(0, 200)'), false, 'runtime.js must not slice history to 200 records');
+    assert.strictEqual(storageTsText.includes('MAX_HISTORY_RECORDS'), false, 'storageService.ts must not cap history at MAX_HISTORY_RECORDS');
+
+    svc.clearHistory();
+    assert.strictEqual(svc.getHistory().length, 0);
   });
 
   // 15. Copy-to-clipboard & report export formatting
@@ -310,14 +384,19 @@ print(json.dumps(out))
     assert.ok(report.includes('Test_Verify_Net'));
     assert.ok(report.includes('Verify#Pass!2026'));
 
+    // Simulate Node.js 22 getter-only globalThis.navigator before overriding via setGlobalProp
+    Object.defineProperty(globalThis, 'navigator', {
+      get: () => ({ userAgent: 'Node.js/22' }),
+      configurable: true,
+    });
     let clipboardBuffer = '';
-    global.navigator = {
+    setGlobalProp('navigator', {
       clipboard: {
         writeText: async (txt) => {
           clipboardBuffer = txt;
         },
       },
-    };
+    });
     const copiedOk = await clipMod.copyTextToClipboard(sample.password);
     assert.strictEqual(copiedOk, true);
     assert.strictEqual(clipboardBuffer, 'Verify#Pass!2026');
@@ -677,10 +756,10 @@ print(json.dumps(out))
     assert.strictEqual(swJs.includes('indexedDB.deleteDatabase'), false);
 
     let sessionStore = {};
-    global.sessionStorage = {
+    setGlobalProp('sessionStorage', {
       getItem: (k) => sessionStore[k] || null,
       setItem: (k, v) => { sessionStore[k] = v; },
-    };
+    });
     assert.strictEqual(swUpdateMod.shouldAllowControllerReload(100000), true);
     assert.strictEqual(swUpdateMod.shouldAllowControllerReload(102000), false);
     assert.strictEqual(swUpdateMod.shouldAllowControllerReload(115000), true);
@@ -730,7 +809,7 @@ for name, im in cases:
     out.append({"name": name, "w": im.size[0], "h": im.size[1], "rgba": list(im.tobytes()), "expected": payload})
 print(json.dumps(out))
 `;
-    const items = JSON.parse(execSync(`python3 -c '${pyScript}'`, { maxBuffer: 150 * 1024 * 1024 }).toString());
+    const items = runPythonJson(pyScript);
     assert.strictEqual(items.length, 10);
     for (const item of items) {
       const decoded = qrDecoder.extractAndDecodeFromImageData({
@@ -921,14 +1000,14 @@ print(json.dumps({"w": im.size[0], "h": im.size[1], "rgba": list(im.tobytes()), 
     assert.strictEqual(partialCache.has('/offline-ready.json'), false, 'Incomplete cache must not have /offline-ready.json');
 
     // Verify verifyOfflineCacheReadiness reports cacheReady = false on partialCache
-    global.window = {};
-    global.navigator = { onLine: false, serviceWorker: {} };
-    global.caches = {
+    setGlobalProp('window', {});
+    setGlobalProp('navigator', { onLine: false, serviceWorker: {} });
+    setGlobalProp('caches', {
       keys: async () => [versionJson.cacheName],
       open: async () => ({
         match: async (k) => partialCache.get(k),
       }),
-    };
+    });
     const reportIncomplete = await swUpdateMod.verifyOfflineCacheReadiness();
     assert.strictEqual(reportIncomplete.cacheReady, false);
     assert.strictEqual(reportIncomplete.state, 'incomplete');
@@ -1029,9 +1108,9 @@ print(json.dumps({"w": im.size[0], "h": im.size[1], "rgba": list(im.tobytes()), 
 
     // Step 4: Disconnect the internet completely
     isInternetConnected = false;
-    global.window = {};
-    global.navigator = { onLine: false, serviceWorker: {} };
-    global.caches = sandbox.caches;
+    setGlobalProp('window', {});
+    setGlobalProp('navigator', { onLine: false, serviceWorker: {} });
+    setGlobalProp('caches', sandbox.caches);
 
     const offlineStatus = await swUpdateMod.verifyOfflineCacheReadiness();
     assert.strictEqual(offlineStatus.isOnline, false);

@@ -28,7 +28,6 @@ export const IDB_HISTORY_STORE = 'scan_history';
 
 const LEGACY_HISTORY_STORAGE_KEY = 'zip_wifi_qr_history_v1';
 const SETTINGS_STORAGE_KEY = 'zip_wifi_qr_settings_v1';
-const MAX_HISTORY_RECORDS = 200;
 
 const DEFAULT_SETTINGS: AppSettings = {
   language: DEFAULT_LANGUAGE,
@@ -218,8 +217,7 @@ export class StorageService {
         }
 
         const mergedList = Array.from(mergedMap.values())
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-          .slice(0, MAX_HISTORY_RECORDS);
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
         this.historyCache = mergedList;
 
@@ -455,7 +453,7 @@ export class StorageService {
       return true;
     });
 
-    const updated = [entry, ...existing].slice(0, MAX_HISTORY_RECORDS);
+    const updated = [entry, ...existing];
     this.historyCache = updated;
     this.simulatedIdbStore.set(entry.id, entry);
 

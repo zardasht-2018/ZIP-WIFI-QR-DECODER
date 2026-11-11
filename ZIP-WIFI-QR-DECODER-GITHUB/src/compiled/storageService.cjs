@@ -36,7 +36,6 @@ const IDB_HISTORY_STORE = 'scan_history';
 exports.IDB_HISTORY_STORE = IDB_HISTORY_STORE;
 const LEGACY_HISTORY_STORAGE_KEY = 'zip_wifi_qr_history_v1';
 const SETTINGS_STORAGE_KEY = 'zip_wifi_qr_settings_v1';
-const MAX_HISTORY_RECORDS = 200;
 const DEFAULT_SETTINGS = {
   language: _translations.DEFAULT_LANGUAGE,
   historyEnabled: true,
@@ -217,7 +216,7 @@ class StorageService {
             mergedMap.set(norm.id, norm);
           }
         }
-        const mergedList = Array.from(mergedMap.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, MAX_HISTORY_RECORDS);
+        const mergedList = Array.from(mergedMap.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         this.historyCache = mergedList;
 
         // Persist any migrated records into IndexedDB and remove legacy localStorage key
@@ -435,7 +434,7 @@ class StorageService {
       }
       return true;
     });
-    const updated = [entry, ...existing].slice(0, MAX_HISTORY_RECORDS);
+    const updated = [entry, ...existing];
     this.historyCache = updated;
     this.simulatedIdbStore.set(entry.id, entry);
     if (this.idbDatabase) {

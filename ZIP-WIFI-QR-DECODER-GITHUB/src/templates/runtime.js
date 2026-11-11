@@ -2747,8 +2747,7 @@ function decodeAllQRCodesFromFile(file, onProgress) {
         });
 
         scanHistory = Array.from(merged.values())
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-          .slice(0, 200);
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
         for (const item of scanHistory) {
           await idbPutRecord(item);
@@ -3027,7 +3026,7 @@ function decodeAllQRCodesFromFile(file, onProgress) {
         scanHistory = [
           entry,
           ...scanHistory.filter((item) => item.id !== entry.id && item.result.rawPayload !== parsed.rawPayload)
-        ].slice(0, 200);
+        ];
         void idbPutRecord(entry);
         renderHistoryViews();
       }
