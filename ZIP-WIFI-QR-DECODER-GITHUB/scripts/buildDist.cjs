@@ -157,7 +157,8 @@ jsContent += '\n' + swRegistrationSnippet;
 const cssHash = shortHash(cssContent);
 const jsHash = shortHash(jsContent);
 const htmlHash = shortHash(bodyHtml);
-const combinedHash = shortHash(`${cssHash}:${jsHash}:${htmlHash}`);
+const manifestHash = shortHash(fs.readFileSync(path.join(publicDir, 'manifest.json'), 'utf8'));
+const combinedHash = shortHash(`${cssHash}:${jsHash}:${htmlHash}:${manifestHash}`);
 const buildVersion = `v2.5.0-${combinedHash}`;
 
 const hashedCssFilename = `index.${cssHash}.css`;
@@ -181,7 +182,7 @@ fs.writeFileSync(path.join(distDir, 'sw.js'), populatedSw, 'utf8');
 
 // 5. Write dist/version.json for version inspection and diagnostics
 const versionMeta = {
-  app: 'ZIP QR — Wi-Fi QR Decoder',
+  app: 'ZIP QR',
   version: buildVersion,
   cacheName: `zip-qr-cache-${buildVersion}`,
   assets: {
@@ -198,11 +199,29 @@ const prodIndexHtml = `<!DOCTYPE html>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
   <meta name="theme-color" content="#050811" />
+  <meta name="application-name" content="ZIP QR" />
+  <meta name="apple-mobile-web-app-title" content="ZIP QR" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="msapplication-tooltip" content="ZIP QR" />
+  <meta name="msapplication-TileColor" content="#000000" />
+  <meta name="msapplication-TileImage" content="/icons/mstile-150x150.png" />
+  <meta name="msapplication-config" content="/browserconfig.xml" />
   <meta name="description" content="ZIP QR — Wi-Fi QR Decoder (SCAN. REVEAL. CONNECT.) Created and developed by Zardasht Muhammad." />
   <link rel="manifest" href="/manifest.json" />
-  <link rel="icon" type="image/svg+xml" href="/logo/zip-logo.svg" />
-  <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
-  <title>ZIP QR — Wi-Fi QR Decoder</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512x512.png" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180x180.png" />
+  <link rel="apple-touch-icon" sizes="167x167" href="/icons/apple-touch-icon-167x167.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon-152x152.png" />
+  <link rel="apple-touch-icon" sizes="120x120" href="/icons/apple-touch-icon-120x120.png" />
+  <title>ZIP QR</title>
   <link rel="stylesheet" href="/assets/${hashedCssFilename}" />
 </head>
 <body data-theme="electric-blue" dir="rtl" class="min-h-screen flex flex-col selection:bg-sky-500 selection:text-white">

@@ -2090,7 +2090,7 @@ function decodeAllQRCodesFromFile(file, onProgress) {
   "ckb": {
     "brandPrimary": "ZIP QR",
     "brandSecondary": "Wi-Fi QR Decoder",
-    "brandDisplayTitle": "ZIP QR — Wi-Fi QR Decoder",
+    "brandDisplayTitle": "ZIP QR",
     "tagline": "SCAN. REVEAL. CONNECT.",
     "navHome": "سەرەکی",
     "navScanner": "سکانەر",
@@ -2292,7 +2292,7 @@ function decodeAllQRCodesFromFile(file, onProgress) {
   "en": {
     "brandPrimary": "ZIP QR",
     "brandSecondary": "Wi-Fi QR Decoder",
-    "brandDisplayTitle": "ZIP QR — Wi-Fi QR Decoder",
+    "brandDisplayTitle": "ZIP QR",
     "tagline": "SCAN. REVEAL. CONNECT.",
     "navHome": "Home",
     "navScanner": "Scanner",
@@ -2906,7 +2906,7 @@ function decodeAllQRCodesFromFile(file, onProgress) {
       document.documentElement.setAttribute('lang', lang);
       document.documentElement.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
       document.body.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
-      document.title = t.brandDisplayTitle;
+      document.title = 'ZIP QR';
 
       document.querySelectorAll('[data-i18n]').forEach((el) => {
         const key = el.getAttribute('data-i18n');

@@ -236,7 +236,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
   ckb: {
     brandPrimary: 'ZIP QR',
     brandSecondary: 'Wi-Fi QR Decoder',
-    brandDisplayTitle: 'ZIP QR — Wi-Fi QR Decoder',
+    brandDisplayTitle: 'ZIP QR',
     tagline: 'SCAN. REVEAL. CONNECT.',
     navHome: 'سەرەکی',
     navScanner: 'سکانەر',
@@ -489,7 +489,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationDictionary> = {
   en: {
     brandPrimary: 'ZIP QR',
     brandSecondary: 'Wi-Fi QR Decoder',
-    brandDisplayTitle: 'ZIP QR — Wi-Fi QR Decoder',
+    brandDisplayTitle: 'ZIP QR',
     tagline: 'SCAN. REVEAL. CONNECT.',
     navHome: 'Home',
     navScanner: 'Scanner',

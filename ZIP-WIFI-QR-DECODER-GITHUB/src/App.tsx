@@ -32,7 +32,7 @@ export default function App() {
     const isRtl = language === 'ckb';
     document.documentElement.setAttribute('lang', language);
     document.documentElement.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
-    document.title = 'ZIP QR — Wi-Fi QR Decoder';
+    document.title = 'ZIP QR';
   }, [language]);
 
   useEffect(() => {

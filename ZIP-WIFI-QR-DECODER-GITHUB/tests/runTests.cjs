@@ -354,17 +354,31 @@ print(json.dumps(out))
     assert.ok(bodyHtml.includes('Zardasht Muhammad'));
   });
 
-  // 18. PWA Manifest & Page Title Branding Verification
-  await runTest(18, 'PWA manifest.json and index.html use shortened ZIP QR — Wi-Fi QR Decoder branding', () => {
+  // 18. PWA Manifest, Platform Metadata & Official Icon Verification
+  await runTest(18, 'PWA manifest.json, index.html, and icon suite use official ZIP QR branding across all platforms', () => {
     const manifest = JSON.parse(
       fs.readFileSync(path.join(projectRoot, 'public/manifest.json'), 'utf8')
     );
-    assert.strictEqual(manifest.name, 'ZIP QR — Wi-Fi QR Decoder');
+    assert.strictEqual(manifest.name, 'ZIP QR');
     assert.strictEqual(manifest.short_name, 'ZIP QR');
     assert.strictEqual(manifest.display, 'standalone');
+    assert.ok(Array.isArray(manifest.icons) && manifest.icons.length >= 16);
+    assert.ok(manifest.icons.some((ic) => ic.src === '/icons/icon-192x192.png' && ic.purpose === 'any'));
+    assert.ok(manifest.icons.some((ic) => ic.src === '/icons/icon-512x512.png' && ic.purpose === 'any'));
+    assert.ok(manifest.icons.some((ic) => ic.src === '/icons/icon-192x192-maskable.png' && ic.purpose === 'maskable'));
+    assert.ok(manifest.icons.some((ic) => ic.src === '/icons/icon-512x512-maskable.png' && ic.purpose === 'maskable'));
+
+    for (const ic of manifest.icons) {
+      const diskIconPath = path.join(projectRoot, 'public', ic.src.slice(1));
+      assert.ok(fs.existsSync(diskIconPath), `Missing manifest icon on disk: ${ic.src}`);
+    }
+    assert.ok(fs.existsSync(path.join(projectRoot, 'public/favicon.ico')));
+    assert.ok(fs.existsSync(path.join(projectRoot, 'public/apple-touch-icon.png')));
 
     const indexHtml = fs.readFileSync(path.join(projectRoot, 'index.html'), 'utf8');
-    assert.ok(indexHtml.includes('<title>ZIP QR — Wi-Fi QR Decoder</title>'));
+    assert.ok(indexHtml.includes('<title>ZIP QR</title>'));
+    assert.ok(indexHtml.includes('name="application-name" content="ZIP QR"'));
+    assert.ok(indexHtml.includes('name="apple-mobile-web-app-title" content="ZIP QR"'));
     assert.ok(indexHtml.includes('lang="ckb"'));
     assert.ok(indexHtml.includes('dir="rtl"'));
   });

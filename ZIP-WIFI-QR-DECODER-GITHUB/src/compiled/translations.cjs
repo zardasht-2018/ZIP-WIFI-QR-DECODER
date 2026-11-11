@@ -17,7 +17,7 @@ const TRANSLATIONS = {
   ckb: {
     brandPrimary: 'ZIP QR',
     brandSecondary: 'Wi-Fi QR Decoder',
-    brandDisplayTitle: 'ZIP QR — Wi-Fi QR Decoder',
+    brandDisplayTitle: 'ZIP QR',
     tagline: 'SCAN. REVEAL. CONNECT.',
     navHome: 'سەرەکی',
     navScanner: 'سکانەر',
@@ -229,7 +229,7 @@ const TRANSLATIONS = {
   en: {
     brandPrimary: 'ZIP QR',
     brandSecondary: 'Wi-Fi QR Decoder',
-    brandDisplayTitle: 'ZIP QR — Wi-Fi QR Decoder',
+    brandDisplayTitle: 'ZIP QR',
     tagline: 'SCAN. REVEAL. CONNECT.',
     navHome: 'Home',
     navScanner: 'Scanner',
